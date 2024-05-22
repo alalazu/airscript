@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "airscript"
+version = "0.2.0"
+description = "Airlock Gateway Configuration Script Engine"
+readme = "README.md"
+authors = [{ name = "Urs Zurbuchen", email = "info@airlock.com" }]
+classifiers = [
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: System Administrators",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Topic :: System :: Systems Administration",
+    "Topic :: Utilities"
+]
+keywords = ["airlock"]
+dependencies = [
+    "colorama",
+    "cryptography",
+    "pem",
+    "pyairlock",
+    "readline; platform_system != 'Windows'",
+    "pyreadline3; platform_system == 'Windows'",
+]
+requires-python = ">=3.11"
+
+[project.optional-dependencies]
+DOC = ["pdoc3"]
+
+[project.scripts]
+airscript = "airscript"
+
+[project.urls]
+"Official Website" = "https://www.airlock.com"
+Homepage = "https://github.com/alalazu/airscript"
+

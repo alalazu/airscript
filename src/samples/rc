@@ -1,0 +1,50 @@
+# AirScript - startup file
+#
+# This file contains commands which are run everytime you startup the interactive environment.
+# Copy it to this name: ~/.airscript.rc
+#
+
+# The following global variables are pre-defined:
+# - run.cmd
+# - run.config
+# - run.verbose
+# - run.is_console
+
+# import statement not required, has already been imported - only for editor
+import airscript
+import atexit
+from pprint import pprint as pp
+from pyAirlock.common import log, output
+from airscript.utils import keepalive
+
+# logging requests
+def debugLog():
+    import logging
+    import requests
+    import http.client as http_client
+    http_client.HTTPConnection.debuglevel = 1
+    logging.basicConfig()
+    logging.getLogger().setLevel(logging.DEBUG)
+    requests_log = logging.getLogger("requests.packages.urllib3")
+    requests_log.setLevel(logging.DEBUG)
+    requests_log.propagate = True
+
+out = output.Info()
+
+out.green( "Loading gateway definitions" )
+gws=airscript.gwLoad( run_info=run )
+print( gws )
+gw=gws['test']
+out.green( f"Connecting to '{gw.getName()}'" )
+gw.connect()
+atexit.register( gw.disconnect )
+c=gw.configurationFindActive()
+out.green( "Fetching active config" )
+c.loadAll()
+_ka = keepalive.KeepAlive()
+_ka.add( gw, interval=30 )
+
+out.cyan( "Preloaded:" )
+out.cyan( f"- gw: gateway '{gw.getName()}'" )
+out.cyan( "- c: current active config" )
+out.cyan( "- _ka: keepalive thread" )

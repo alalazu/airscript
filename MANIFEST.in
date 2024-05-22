@@ -1,0 +1,3 @@
+include COPYING
+recursive-include src *.py
+recursive-include src/samples *

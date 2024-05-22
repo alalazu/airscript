@@ -1,0 +1,46 @@
+airscript:
+  init:
+    scripts:
+      - C:/Users/uzu/Documents/uzu/Development/airscript/src/samples/rc
+  verbose: true
+  download-dir: .
+  timeout: 20.0
+  tls:
+    verify: false
+
+servers:
+  test:
+    - name: test
+      hostname: 10.92.0.17
+      apikey: eyJlbmMiOiJBMjU2Q0JDLUhTNTEyIiwiYWxnIjoiZGlyIn0..Ne3VZQXLArA9nPW38fcIAg.7itH-KdZYdrlVdM4cKBiN8Z2cztK6p5CcWxlS-qRouaEGtQSnJAYFQCYY-o4ZRvo3RQv8iJI-pOeP6bNGeXQD7k02Z6wHRIhd7aV8qiFSWkBVU9PK_O8t_vx2A494poCt8H5_Js3fA2ZX8YYHAd6JxvV51E2sPG8SMzlKxC7SOfybwx-tion6fHUBzbmGMJoBgw7qtlIK_teF9k2DkekmFtz_RWD_3fFJAuuCQ5MyzzIfWICZQ2LV9TsWFp-SrIyLI3smSLMQW4iLpFkKaYa7yyccoIwtkAFCzFHzqslJTp2e-bS911MUDMrqz-PAD7hLWUSP8kknjCLAPvUYGkg2CWg6L-jg-zZIIXahP35BTHVkx7COnCRRWvwRx1rO1psJbrJVEo3L2hH3xzvDaPrUYOLq5zWD2guUWzTgz12-eLx1M9nPqV2TP16QeuvKwltSqoDrLipc6QMJ-HvjB-k73c7MNRMxNc-UG50xKEtIJMyFbK54XdLG0SF-hMfgDTRY18aVQ3ekXyerW6NK1fkGNdQP1CJnlw_ZiIymrON8vA.M23EPab6XapoA6TsRj0AJoqcFgeOM5Ne5xNzaVBiAS8
+      mgmt: true
+  prod:
+    - name: prod1
+      hostname: 192.168.200.1
+      apikey: eyJlbmMiOiJBMjU2Q0JDLUhTNTEyIiwiYWxnIjoiZGlyIn0..Ne3VZQXLArA9nPW38fcIAg.7itH-KdZYdrlVdM4cKBiN8Z2cztK6p5CcWxlS-qRouaEGtQSnJAYFQCYY-o4ZRvo3RQv8iJI-pOeP6bNGeXQD7k02Z6wHRIhd7aV8qiFSWkBVU9PK_O8t_vx2A494poCt8H5_Js3fA2ZX8YYHAd6JxvV51E2sPG8SMzlKxC7SOfybwx-tion6fHUBzbmGMJoBgw7qtlIK_teF9k2DkekmFtz_RWD_3fFJAuuCQ5MyzzIfWICZQ2LV9TsWFp-SrIyLI3smSLMQW4iLpFkKaYa7yyccoIwtkAFCzFHzqslJTp2e-bS911MUDMrqz-PAD7hLWUSP8kknjCLAPvUYGkg2CWg6L-jg-zZIIXahP35BTHVkx7COnCRRWvwRx1rO1psJbrJVEo3L2hH3xzvDaPrUYOLq5zWD2guUWzTgz12-eLx1M9nPqV2TP16QeuvKwltSqoDrLipc6QMJ-HvjB-k73c7MNRMxNc-UG50xKEtIJMyFbK54XdLG0SF-hMfgDTRY18aVQ3ekXyerW6NK1fkGNdQP1CJnlw_ZiIymrON8vA.M23EPab6XapoA6TsRj0AJoqcFgeOM5Ne5xNzaVBiAS8
+      peer: prod2
+    - name: prod2
+      hostname: 192.168.200.2
+      apikey: eyJlbmMiOiJBMjU2Q0JDLUhTNTEyIiwiYWxnIjoiZGlyIn0..Ne3VZQXLArA9nPW38fcIAg.7itH-KdZYdrlVdM4cKBiN8Z2cztK6p5CcWxlS-qRouaEGtQSnJAYFQCYY-o4ZRvo3RQv8iJI-pOeP6bNGeXQD7k02Z6wHRIhd7aV8qiFSWkBVU9PK_O8t_vx2A494poCt8H5_Js3fA2ZX8YYHAd6JxvV51E2sPG8SMzlKxC7SOfybwx-tion6fHUBzbmGMJoBgw7qtlIK_teF9k2DkekmFtz_RWD_3fFJAuuCQ5MyzzIfWICZQ2LV9TsWFp-SrIyLI3smSLMQW4iLpFkKaYa7yyccoIwtkAFCzFHzqslJTp2e-bS911MUDMrqz-PAD7hLWUSP8kknjCLAPvUYGkg2CWg6L-jg-zZIIXahP35BTHVkx7COnCRRWvwRx1rO1psJbrJVEo3L2hH3xzvDaPrUYOLq5zWD2guUWzTgz12-eLx1M9nPqV2TP16QeuvKwltSqoDrLipc6QMJ-HvjB-k73c7MNRMxNc-UG50xKEtIJMyFbK54XdLG0SF-hMfgDTRY18aVQ3ekXyerW6NK1fkGNdQP1CJnlw_ZiIymrON8vA.M23EPab6XapoA6TsRj0AJoqcFgeOM5Ne5xNzaVBiAS8
+      peer: prod1
+
+config-groups:
+  prod:
+    code: P
+    label: prod
+    servers:
+      - server-name-1
+      - server-name-2
+    virtual-hosts:
+      - www.example.com
+      - example.com
+      - app.example.com
+  test:
+    code: T
+    label: integration
+    servers:
+      - server-name-3
+      - server-name-4
+    virtual-hosts:
+      - test.example.com
+      - app.test.example.com

@@ -1,0 +1,6 @@
+pyMarvin
+A Python library for Marvin modules
+Copyright (c) 2018-2019 Urs Zurbuchen <urs.zurbuchen@ergon.ch>
+
+pyMarvin released under the terms of the GNU General Public License (v3).
+Please consult http://www.gnu.org/licenses/gpl.html for terms and conditions.

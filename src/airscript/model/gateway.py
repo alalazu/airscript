@@ -22,6 +22,7 @@ from airscript.utils import internal
 from airscript.utils import cache
 from pyAirlock.common import log
 from pyAirlock.gateway.config_api import gateway as gw_api
+from pyAirlock.common import exception
 
 
 class Gateway( object ):
@@ -38,6 +39,7 @@ class Gateway( object ):
         self.group = group
         self.version = None
         self.nodename = None
+        self.mgmt = False
         self._run_info = run_info
         self._conn = gw_api.GW( name, hostname, key, self._run_info )
         self._log = log.Log( self.__module__, run_info )
@@ -103,12 +105,15 @@ class Gateway( object ):
     
     def connect( self ) -> bool:
         """ Establish session with Airlock Gateway. """
-        if self._conn.connect() == False:
+        try:
+            if self._conn.connect() == False:
+                return False
+            self._log.verbose( "Connected to '%s'" % (self.name,) )
+            self.version = self._conn.getVersion()
+            self.nodename = self._conn.getNodename()
+            return True
+        except exception.AirlockConnectionError:
             return False
-        self._log.verbose( "Connected to '%s'" % (self.name,) )
-        self.version = self._conn.getVersion()
-        self.nodename = self._conn.getNodename()
-        return True
     
     def disconnect( self ):
         """ Disconnect from Airlock Gateway, closing administrator session. """

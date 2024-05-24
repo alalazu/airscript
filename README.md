@@ -23,7 +23,7 @@ thus blocks any attempt at data theft and manipulation.
 
 ### Installation
 ```bash
-pip install airscript
+pip install airlock-airscript
 ```
 
 ### Documentation

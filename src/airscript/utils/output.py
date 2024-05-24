@@ -21,32 +21,32 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 from colorama import Fore, Style
 
 
-def error( msg ):
-    print( Fore.RED + "Error: %s" % (msg,) + Style.RESET_ALL )
+def error( msg, end="\n" ):
+    print( Fore.RED + "Error: %s" % (msg,) + Style.RESET_ALL, end=end )
 
-def warn( msg ):
-    print( Fore.YELLOW + "Warning: %s" % (msg,) + Style.RESET_ALL )
+def warn( msg, end="\n" ):
+    print( Fore.YELLOW + "Warning: %s" % (msg,) + Style.RESET_ALL, end=end )
 
-def info( msg ):
+def info( msg, end="\n" ):
     print( Fore.GREEN + msg + Style.RESET_ALL )
 
-def label( msg ):
+def label( msg, end="\n" ):
     print( Fore.WHITE + msg + Style.RESET_ALL )
 
-def msg( msg ):
+def msg( msg, end="\n" ):
     print( Fore.CYAN + msg + Style.RESET_ALL )
 
-def getLengthsColumns( lst: list, columns: list[int]=None ) -> list[int]:
-    lengths = []
+def getLengthsColumns( lst: list, columns: list[int]=None, lengths: list=[] ) -> list[int]:
     try:
         cols = len( columns )
     except TypeError:
         cols = len( lst[0] )
-    for idx in range( cols ):
-        try:
-            lengths.append( columns[idx] )
-        except (TypeError, IndexError):
-            lengths.append( 0 )
+    if lengths == []:
+        for idx in range( cols ):
+            try:
+                lengths.append( columns[idx] )
+            except (TypeError, IndexError):
+                lengths.append( 0 )
     for entry in lst:
         if isinstance( entry, list ):
             items = entry

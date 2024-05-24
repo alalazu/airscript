@@ -39,7 +39,6 @@ This class represents a complete Airlock Gateway Configuration and consists of m
 """
 
 import datetime
-from colorama import Fore, Style
 from typing import Union
 
 from airscript.model import api_policy
@@ -72,8 +71,8 @@ class Configuration( object ):
             "host": 1,
             "icap-environment": 3,
             "ip-address-list": 1200,
-            "local-json-web-key-sets": 3200,
-            "remote-json-web-key-sets": 3200,
+            "local-json-web-key-set": 3200,
+            "remote-json-web-key-set": 3200,
             "kerberos-environment": 3000,
             "mapping": 6000,
             "allowed-network-endpoint": 2,
@@ -109,6 +108,76 @@ class Configuration( object ):
         self._reset()
         self._loaded = False
     
+    def getObjects( self, elementName: str ) -> dict:
+        if elementName == "api-policy-service":
+            obj = self.objects['apipolicy']
+        elif elementName == "back-end-group":
+            obj = self.objects['backendgroups']
+        elif elementName == "ssl-certificate":
+            obj = self.objects['certs']
+        elif elementName == "graphql-document":
+            obj = self.objects['graphql']
+        elif elementName == "host":
+            obj = self.objects['hostnames']
+        elif elementName == "icap-environment":
+            obj = self.objects['icap']
+        elif elementName == "ip-address-list":
+            obj = self.objects['iplists']
+        elif elementName == "local-json-web-key-set":
+            obj = self.objects['jwks']
+        elif elementName == "remote-json-web-key-set":
+            obj = self.objects['jwks']
+        elif elementName == "kerberos-environment":
+            obj = self.objects['kerberos']
+        elif elementName == "mapping":
+            obj = self.objects['mappings']
+        elif elementName == "allowed-network-endpoint":
+            obj = self.objects['network_endpoints']
+        elif elementName == "node":
+            obj = self.objects['nodes']
+        elif elementName == "openapi-document":
+            obj = self.objects['openapi']
+        elif elementName == "mapping-template":
+            obj = self.objects['templates']
+        elif elementName == "virtual-host":
+            obj = self.objects['vhosts']
+        return obj
+
+    def getListFunc( self, elementName: str ):
+        if elementName == "api-policy-service":
+            func = self.apipolicy
+        elif elementName == "back-end-group":
+            func = self.backendgroups
+        elif elementName == "ssl-certificate":
+            func = self.certificates
+        elif elementName == "graphql-document":
+            func = self.graphql
+        elif elementName == "host":
+            func = self.hostnames
+        elif elementName == "icap-environment":
+            func = self.icap
+        elif elementName == "ip-address-list":
+            func = self.iplists
+        elif elementName == "local-json-web-key-set":
+            func = self.jwks
+        elif elementName == "remote-json-web-key-set":
+            func = self.jwks
+        elif elementName == "kerberos-environment":
+            func = self.kerberos
+        elif elementName == "mapping":
+            func = self.mappings
+        elif elementName == "allowed-network-endpoint":
+            func = self.networkendpoints
+        elif elementName == "node":
+            func = self.nodes
+        elif elementName == "openapi-document":
+            func = self.openapi
+        elif elementName == "mapping-template":
+            func = self.templates
+        elif elementName == "virtual-host":
+            func = self.vhosts
+        return func
+
     def load( self ):
         """ Retrieve configuration data (vhosts, mappings etc.) from Airlock Gateway using REST API. """
         if self._loaded == False:
@@ -165,7 +234,7 @@ class Configuration( object ):
         Make sure to have called .update() on all modified items.
         """ 
         if comment == None:
-            self._log.warn( "No comment specified! If you don't want to specify one, please use '<obj>.activate( comment=\"\" )'" )
+            self._log.warning( "No comment specified! If you don't want to specify one, please use '<obj>.activate( comment=\"\" )'" )
             return False
         elif comment != "":
             params = {'comment': comment }
@@ -186,7 +255,7 @@ class Configuration( object ):
         Make sure to have called .update() on all modified items.
         """ 
         if comment == None:
-            self._log.warn( "No comment specified! If you don't want to specify one, please use '<obj>.activate( comment=\"\" )'" )
+            self._log.warning( "No comment specified! If you don't want to specify one, please use '<obj>.activate( comment=\"\" )'" )
             return False
         elif comment != "":
             params = {'comment': comment }
@@ -225,23 +294,21 @@ class Configuration( object ):
         resp = self.conn.get( "/configuration/validator-messages" )
         if resp.text != "":
             for entry in resp.json()['data']:
-                self.messages.append( validator.Validator( entry, self.conn ))
+                self.messages.append( validator.Validator( self, obj=entry ))
         if len( self.messages ) == 0:
             return True
         else:
-            self._log.verbose( "Validation messages:" )
-            len_severity = 7
-            len_type = 12
-            len_id = 0
-            len_source = 0
+            error = []
+            warning = []
+            info = []
             for entry in self.messages:
-                len_id = max( len_id, len( entry.attrs['meta']['model']['id'] ))
-                len_source = max( len_source, len( entry.attrs['source']['pointer'] ))
-            for entry in self.messages:
-                self._log.verbose( "%s%-*s%s: %s%-*s %s(%*s) - %s%s%s" % (Fore.RED, len_severity, entry.attrs['meta']['severity'], Style.RESET_ALL,
-                                                                          Fore.YELLOW, len_type, entry.attrs['meta']['model']['type'],
-                                                                          Fore.WHITE, len_id, entry.attrs['meta']['model']['id'],
-                                                                          Fore.WHITE, entry.attrs['source']['pointer'], Style.RESET_ALL))
+                if entry.attrs['meta']['severity'] == "ERROR":
+                    error.append( entry )
+                elif entry.attrs['meta']['severity'] == "WARNING":
+                    warning.append( entry )
+                elif entry.attrs['meta']['severity'] == "INFO":
+                    info.append( entry )
+            return { "error": error, "warning": warning, "info": info }
     
     def addNode( self, id: str=None, data: dict=None ):
         if id in self._nodes:
@@ -820,7 +887,7 @@ class Configuration( object ):
             self.getVHosts()
         if criteria == None:
             return self._findByName( self._vhosts, name )
-        self._log.warn( "Criteria search not implemented yet" )
+        self._log.warning( "Criteria search not implemented yet" )
         return None
         
     def findMapping( self, name, criteria=None ):
@@ -829,7 +896,7 @@ class Configuration( object ):
             self.getMappings()
         if criteria == None:
             return self._findByName( self._mappings, name )
-        self._log.warn( "Criteria search not implemented yet" )
+        self._log.warning( "Criteria search not implemented yet" )
         return None
         
     def findBackendgroup( self, name, criteria=None ):
@@ -838,7 +905,7 @@ class Configuration( object ):
             self.getBackendGroups()
         if criteria == None:
             return self._findByName( self._backendgroups, name )
-        self._log.warn( "Criteria search not implemented yet" )
+        self._log.warning( "Criteria search not implemented yet" )
         return None
         
     def findCertificate( self, name, criteria=None ):
@@ -847,7 +914,7 @@ class Configuration( object ):
             self.getCertificates()
         if criteria == None:
             return self._findByName( self._certs, name )
-        self._log.warn( "Criteria search not implemented yet" )
+        self._log.warning( "Criteria search not implemented yet" )
         return None
         
     def findJWKS( self, name, criteria=None ):
@@ -856,7 +923,7 @@ class Configuration( object ):
             self.getJWKS()
         if criteria == None:
             return self._findByName( self._jwks, name )
-        self._log.warn( "Criteria search not implemented yet" )
+        self._log.warning( "Criteria search not implemented yet" )
         return None
         
     def findOpenAPI( self, name, criteria=None ):
@@ -865,7 +932,7 @@ class Configuration( object ):
             self.getOpenAPI()
         if criteria == None:
             return self._findByName( self._openapi, name )
-        self._log.warn( "Criteria search not implemented yet" )
+        self._log.warning( "Criteria search not implemented yet" )
         return None
         
     def findGraphQL( self, name, criteria=None ):
@@ -874,7 +941,7 @@ class Configuration( object ):
             self.getGraphQL()
         if criteria == None:
             return self._findByName( self._graphql, name )
-        self._log.warn( "Criteria search not implemented yet" )
+        self._log.warning( "Criteria search not implemented yet" )
         return None
         
     def findIPList( self, name, criteria=None ):
@@ -883,7 +950,7 @@ class Configuration( object ):
             self.getIPLists()
         if criteria == None:
             return self._findByName( self._iplists, name )
-        self._log.warn( "Criteria search not implemented yet" )
+        self._log.warning( "Criteria search not implemented yet" )
         return None
         
     def deleteNode( self, value ):

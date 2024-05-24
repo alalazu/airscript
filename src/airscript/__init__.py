@@ -86,10 +86,9 @@ it works, e.g. the requirements for loading and activating a configuration.
 
 import os
 
-from colorama import Fore, Style
-
-from airscript.model import configuration, gateway
-from airscript.utils import output, runinfo
+import airscript.commands
+from airscript.model import gateway
+from airscript.utils import runinfo
 from pyAirlock.common import config, exception, log, utils
 
 
@@ -167,6 +166,7 @@ def gwLoad( fname: str=None, run_info=None ):
             gws[name] = gateway.Gateway( name, hostname, apikey, run_info, peer=peer, group=group )
             if airscript_config.get( 'mgmt', base=server ):
                 mgmt_server = gws[name]
+                gws[name].mgmt = True
             verify = common_verify
             ca_file = common_ca_file
             cert = common_ca_cert
@@ -198,324 +198,52 @@ def gwLoad( fname: str=None, run_info=None ):
 
 
 def listConfigs( gw ):
-    """
-    List all Airlock Gateway configurations.
-    
-    Sample call: listConfigs( gws['my-waf'] )
-    """
-    out = log.Log( f"{__name__}.listConfigs" )
-    if type( gw ) != gateway.Gateway:
-        out.error( "This is not a Gateway but %s" % (type(gw),) )
-        return 
-    lst = gw.listConfigurations()
-    len_id = 0
-    len_comment = 0
-    for entry in lst:
-        len_id = max( len_id, len( str( entry[0] )))
-        len_comment = max( len_comment, len( entry[1].comment ))
-    len_comment = min( len_comment, 50 )
-    for entry in lst:
-        out.info( "%s%*s%s: %s%-*.*s %s%s%s" % (Fore.CYAN, len_id, entry[0], Style.RESET_ALL,
-                                                   Fore.GREEN, len_comment, len_comment, entry[1].comment,
-                                                   Fore.WHITE, entry[1].type, Style.RESET_ALL) )
-
+    airscript.commands.listConfigs( gw )
 
 def listVHosts( cfg, paths=None ):
-    """
-    List all virtual hosts defined by an Airlock Gateway configuration.
-    
-    'paths' is a list of attributes displayed instead of id/name. Specified in the form 'locking.application.response.compressionAllowed'
-    """
-    out = log.Log( f"{__name__}.listVHosts" )
-    if type( cfg ) != configuration.Configuration:
-        out.error( "This is not a configuration but %s" % (type(cfg),) )
-        return
-    lst = cfg.vhosts( sort='name' )
-    if paths == None:
-        col_len = output.getLengthsIdName( lst )
-        for entry in lst:
-            out.info( "%s%*s%s: %s%-*.*s %s(%s)%s" % (Fore.CYAN, col_len['id'], entry[0], Style.RESET_ALL,
-                                                      Fore.GREEN, col_len['name'], col_len['name'], entry[1].name,
-                                                      Fore.WHITE, entry[1].attrs['networkInterface']['ipV4Address'], Style.RESET_ALL) )
-    else:
-        output.listAttributes( lst, cfg.vhosts, paths )
+    airscript.commands.listVHosts( cfg, paths=paths )
 
 def listMappings( cfg, paths=None ):
-    """
-    List all mappings defined by an Airlock Gateway configuration.
-    
-    'paths' is a list of attributes displayed instead of id/name. Specified in the form 'locking.application.response.compressionAllowed'
-    """
-    out = log.Log( f"{__name__}.listMappings" )
-    if type( cfg ) != configuration.Configuration:
-        out.error( "This is not a configuration but %s" % (type(cfg),) )
-        return
-    lst = cfg.listMappings()
-    if paths == None:
-        col_len = output.getLengthsIdName( lst )
-        col_len['name'] = min( col_len['name'], 30 )
-        for entry in lst:
-            out.info( "%s%*s%s: %s%-*.*s %s%-*.*s %s%s%s" %
-                       (Fore.CYAN, col_len['id'], entry[0], Style.RESET_ALL,
-                        Fore.GREEN, col_len['name'], col_len['name'], entry[1].name,
-                        Fore.YELLOW, 20, 20, entry[1].attrs['entryPath']['value'],
-                        Fore.WHITE, entry[1].attrs['labels'], Style.RESET_ALL) )
-    else:
-        output.listAttributes( lst, cfg.mappings, paths )
+    airscript.commands.listMappings( cfg, paths=paths )
 
 def listBackendgroups( cfg, paths=None ):
-    """
-    List all virtual hosts defined by an Airlock Gateway configuration.
-    
-    'paths' is a list of attributes displayed instead of id/name. Specified in the form 'locking.application.response.compressionAllowed'
-    
-    Sample call sequence:
-    cfg = gws['my-waf'].configurationFindActive()
-    listBackendgroups( cfg )
-    """
-    out = log.Log( f"{__name__}.listBackendgroups" )
-    if type( cfg ) != configuration.Configuration:
-        out.error( "This is not a configuration but %s" % (type(cfg),) )
-        return
-    if paths == None:
-        output.listIdName( cfg.listBackendGroups() )
-    else:
-        output.listAttributes( cfg.listBackendGroups(), cfg.backendgroups, paths )
+    airscript.commands.listBackendgroups( cfg, paths=paths )
 
 def listCertificates( cfg, paths=None ):
-    """
-    List all SSL/TLS certificates defined by an Airlock Gateway configuration.
-    
-    'paths' is a list of attributes displayed instead of id/name. Specified in the form 'locking.application.response.compressionAllowed'
-    """
-    out = log.Log( f"{__name__}.listCertificates" )
-    if type( cfg ) != configuration.Configuration:
-        out.error( "This is not a configuration but %s" % (type(cfg),) )
-        return
-    if paths == None:
-        output.listIdName( cfg.listCertificates() )
-    else:
-        output.listAttributes( cfg.listCertificates(), cfg.certs, paths )
+    airscript.commands.listCertificates( cfg, paths=paths )
 
 def listOpenAPI( cfg, paths=None ):
-    """
-    List all OpenAPI specification documents defined by an Airlock Gateway configuration.
-    
-    'paths' is a list of attributes displayed instead of id/name. Specified in the form 'locking.application.response.compressionAllowed'
-    """
-    out = log.Log( f"{__name__}.listOpenAPI" )
-    if type( cfg ) != configuration.Configuration:
-        out.error( "This is not a configuration but %s" % (type(cfg),) )
-        return
-    if paths == None:
-        output.listIdName( cfg.listOpenAPI() )
-    else:
-        output.listAttributes( cfg.listOpenAPI(), cfg.openapi, paths )
+    airscript.commands.listOpenAPI( cfg, paths=paths )
 
 def listGraphQL( cfg, paths=None ):
-    """
-    List all GraphQL specification documents defined by an Airlock Gateway configuration.
-    
-    'paths' is a list of attributes displayed instead of id/name. Specified in the form 'locking.application.response.compressionAllowed'
-    """
-    out = log.Log( f"{__name__}.listGraphQL" )
-    if type( cfg ) != configuration.Configuration:
-        out.error( "This is not a configuration but %s" % (type(cfg),) )
-        return
-    if paths == None:
-        output.listIdName( cfg.listGraphQL() )
-    else:
-        output.listAttributes( cfg.listGraphQL(), cfg.graphql, paths )
+    airscript.commands.listGraphQL( cfg, paths=paths )
 
 def listJWKS( cfg, paths=None ):
-    """
-    List all JWKS providers defined by an Airlock Gateway configuration.
-    
-    'paths' is a list of attributes displayed instead of id/name. Specified in the form 'locking.application.response.compressionAllowed'
-    """
-    out = log.Log( f"{__name__}.listJWKS" )
-    if type( cfg ) != configuration.Configuration:
-        out.error( "This is not a configuration but %s" % (type(cfg),) )
-        return
-    if paths == None:
-        output.listIdName( cfg.listJWKS() )
-    else:
-        output.listAttributes( cfg.listJWKS(), cfg.jwks, paths )
+    airscript.commands.listJWKS( cfg, paths=paths )
 
 def listKerberos( cfg, paths=None ):
-    """
-    List all Kerberos environments defined by an Airlock Gateway configuration.
-    
-    'paths' is a list of attributes displayed instead of id/name. Specified in the form 'locking.application.response.compressionAllowed'
-    """
-    out = log.Log( f"{__name__}.listKerberos" )
-    if type( cfg ) != configuration.Configuration:
-        out.error( "This is not a configuration but %s" % (type(cfg),) )
-        return
-    if paths == None:
-        output.listIdName( cfg.listKerberos() )
-    else:
-        output.listAttributes( cfg.listKerberos(), cfg.kerberos, paths )
+    airscript.commands.listKerberos( cfg, paths=paths )
 
 def listNetworkEndpoints( cfg, paths=None ):
-    """
-    List all network endpoints defined by an Airlock Gateway configuration.
-    
-    'paths' is a list of attributes displayed instead of id/name. Specified in the form 'locking.application.response.compressionAllowed'
-    """
-    out = log.Log( f"{__name__}.listNetworkEndpoints" )
-    if type( cfg ) != configuration.Configuration:
-        out.error( "This is not a configuration but %s" % (type(cfg),) )
-        return
-    if paths == None:
-        output.listIdName( cfg.listNetworkEndpoints() )
-    else:
-        output.listAttributes( cfg.listNetworkEndpoints(), cfg.network_endpoints, paths )
+    airscript.commands.listNetworkEndpoints( cfg, paths=paths )
 
 def listNodes( cfg, paths=None ):
-    """
-    List all nodes defined by an Airlock Gateway configuration.
-    
-    'paths' is a list of attributes displayed instead of id/name. Specified in the form 'locking.application.response.compressionAllowed'
-    """
-    out = log.Log( f"{__name__}.listNodes" )
-    if type( cfg ) != configuration.Configuration:
-        out.error( "This is not a configuration but %s" % (type(cfg),) )
-        return
-    if paths == None:
-        output.listIdName( cfg.listNodes() )
-    else:
-        output.listAttributes( cfg.listNodes(), cfg.nodes, paths )
+    airscript.commands.listNodes( cfg, paths=paths )
 
 def listAPIPolicies( cfg, paths=None ):
-    """
-    List all API policies defined by an Airlock Gateway configuration.
-    
-    'paths' is a list of attributes displayed instead of id/name. Specified in the form 'locking.application.response.compressionAllowed'
-    """
-    out = log.Log( f"{__name__}.listAPIPolicies" )
-    if type( cfg ) != configuration.Configuration:
-        out.error( "This is not a configuration but %s" % (type(cfg),) )
-        return
-    if paths == None:
-        output.listIdName( cfg.listAPIPolicies() )
-    else:
-        output.listAttributes( cfg.listAPIPolicies(), cfg.apipolicy, paths )
+    airscript.commands.listAPIPolicies( cfg, paths=paths )
 
 def listHostNames( cfg, paths=None ):
-    """
-    List all hostnames defined by an Airlock Gateway configuration.
-    
-    'paths' is a list of attributes displayed instead of id/name. Specified in the form 'locking.application.response.compressionAllowed'
-    """
-    out = log.Log( f"{__name__}.listHostnames" )
-    if type( cfg ) != configuration.Configuration:
-        out.error( "This is not a configuration but %s" % (type(cfg),) )
-        return
-    if paths == None:
-        output.listIdName( cfg.listHostNames() )
-    else:
-        output.listAttributes( cfg.listHostNames(), cfg.hostnames, paths )
+    airscript.commands.listHostNames( cfg, paths=paths )
 
 def listIPLists( cfg, paths=None ):
-    """
-    List all IP lists defined by an Airlock Gateway configuration.
-    
-    'paths' is a list of attributes displayed instead of id/name. Specified in the form 'locking.application.response.compressionAllowed'
-    """
-    out = log.Log( f"{__name__}.listIPLists" )
-    if type( cfg ) != configuration.Configuration:
-        out.error( "This is not a configuration but %s" % (type(cfg),) )
-        return
-    lst = cfg.listIPLists()
-    if paths == None:
-        col_len = output.getLengthsIdName( lst )
-        col_len['name'] = min( col_len['name'], 30 )
-        for entry in lst:
-            out.info( "%s%*s%s: %s%-*.*s %s%s%s" % (Fore.CYAN, col_len['id'], entry[0], Style.RESET_ALL,
-                                                    Fore.GREEN, col_len['name'], col_len['name'], entry[1].name,
-                                                    Fore.WHITE, entry[1].attrs['ips'], Style.RESET_ALL) )
-    else:
-        output.listAttributes( lst, cfg.iplists, paths )
+    airscript.commands.listIPLists( cfg, paths=paths )
 
 def listTemplates( cfg, paths=None ):
-    """
-    List all mapping templates defined by an Airlock Gateway configuration.
-    
-    'paths' is a list of attributes displayed instead of id/name. Specified in the form 'locking.application.response.compressionAllowed'
-    """
-    out = log.Log( f"{__name__}.listTemplates" )
-    if type( cfg ) != configuration.Configuration:
-        out.error( "This is not a configuration but %s" % (type(cfg),) )
-        return
-    lst = cfg.listTemplates()
-    if paths == None:
-        len_id = 0
-        len_name = 0
-        for entry in lst:
-            len_id = max( len_id, len( str( entry[1].id )))
-            len_name = max( len_name, len( entry[0] ))
-        len_name = min( len_name, 30 )
-        for entry in lst:
-            out.info( "%s%-*s%s: %s%*s%s" % (Fore.CYAN, len_name, entry[0], Style.RESET_ALL,
-                                             Fore.GREEN, len_id, entry[1].id, Style.RESET_ALL) )
-    else:
-        output.listAttributes( lst, cfg.templates, paths, id_left=True )
+    airscript.commands.listTemplates( cfg, paths=paths )
 
 def listCfgInfo( cfg, order="NVMBCHOGJIAKT" ):
-    """
-    List all configuration information.
-    
-    'order' specifies order of information. Default is 'NVMBCHOGJIAKT',
-    listing nodes, virtual hosts, mappings, backend groups, certificates,
-    hostnames, open api documents, graphql documents, JWKS providers,
-    IP lists, API policies, Kerberos environments, and templates, in this order.
-    """
-    if type( cfg ) != configuration.Configuration:
-        output.error( "This is not a configuration but %s" % (type(cfg),) )
-        return
-    printed = False
-    for t in order:
-        if printed:
-            print()
-        if t == 'N':
-            output.label( "Nodes" )
-            listNodes( cfg )
-        elif t == 'V':
-            output.label( "Virtual Hosts" )
-            listVHosts( cfg )
-        elif t == 'M':
-            output.label( "Mappings" )
-            listMappings( cfg )
-        elif t == 'B':
-            output.label( "Backend Groups" )
-            listBackendgroups( cfg )
-        elif t == 'C':
-            output.label( "SSL/TLS certificates" )
-            listCertificates( cfg )
-        elif t == 'H':
-            output.label( "Hostnames" )
-            listHostNames( cfg )
-        elif t == 'A':
-            output.label( "API policies" )
-            listAPIPolicies( cfg )
-        elif t == 'O':
-            output.label( "OpenAPI specification documents" )
-            listOpenAPI( cfg )
-        elif t == 'G':
-            output.label( "GraphQL specification documents" )
-            listGraphQL( cfg )
-        elif t == 'J':
-            output.label( "JWKS providers" )
-            listJWKS( cfg )
-        elif t == 'I':
-            output.label( "IP lists" )
-            listIPLists( cfg )
-        elif t == 'T':
-            output.label( "Templates" )
-            listTemplates( cfg )
-        elif t == 'K':
-            output.label( "Kerberos environments" )
-            listKerberos( cfg )
-        printed = True
-    
+    airscript.commands.listCfgInfo( cfg, order=order )
+
+def validator( cfg, selection: list[str]=['error','warning','info'], width: int=-1 ):
+    airscript.commands.validator( cfg, selection, width=width )

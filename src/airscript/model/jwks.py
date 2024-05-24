@@ -27,10 +27,10 @@ class JWKS( baseObject.BaseObject ):
     def __init__( self, parent, obj=None, id=None, remote=True ):
         self._remote = remote
         if remote:
-            self._typename = 'remote-json-web-key-sets'
+            self._typename = 'remote-json-web-key-set'
             self._path = 'json-web-key-sets/remotes'
         else:
-            self._typename = 'local-json-web-key-sets'
+            self._typename = 'local-json-web-key-set'
             self._path = 'json-web-key-sets/locals'
         baseObject.BaseObject.__init__( self, parent, obj=obj, id=id )
     

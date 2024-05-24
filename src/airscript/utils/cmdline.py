@@ -45,7 +45,7 @@ class Cmdline( object ):
                                 help='log destination: stdout, stderr, or <filename> (default: None)' )
         parser.add_argument( '-V', '--version', default=False, action='store_true',
                                 help='get version information' )
-        parser.add_argument( 'file', help='script to execute and its parameters', metavar="path", nargs="*" )
+        parser.add_argument( 'args', help='script to execute and its parameters', metavar="path", nargs="*" )
         self._args = parser.parse_args( cmdline )
 
     def __repr__( self ):
@@ -77,15 +77,18 @@ class Cmdline( object ):
             return "/dev/stderr"
         return self._args.logfile
     
+    def get_args( self ):
+        return self._args.args
+    
     def get_scriptfile( self ):
         try:
-            return self._args.file[0]
+            return self._args.args[0]
         except IndexError:
             return None
     
     def get_scriptparams( self ):
         try:
-            return self._args.file[1:]
+            return self._args.args[1:]
         except IndexError:
             return None
     

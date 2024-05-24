@@ -22,8 +22,23 @@ from airscript.model import baseObject
 
 
 class Validator( baseObject.ReadOnlyObject ):
-    def __init__( self, obj=None, conn=None ):
-        baseObject.ReadOnlyObject.__init__( self, obj, conn )
+    def __init__( self, parent, obj=None, id=None ):
         self._typename = 'validator-message'
         self._path = ''
+        baseObject.BaseObject.__init__( self, parent, obj=obj, id=id )
     
+    def me( self ):
+        r = super().me()
+        del r['name']
+        r['severity'] = self.attrs['meta']['severity']
+        r['code'] = self.attrs['code']
+        r['object'] = "{} {}".format( self.attrs['meta']['model']['type'], self.attrs['meta']['model']['id'] )
+        return r
+        
+    def values( self ):
+        tmp = [self.id]
+        tmp.append( self.attrs['meta']['severity'] )
+        tmp.append( self.attrs['code'] )
+        tmp.append( "{} {}".format( self.attrs['meta']['model']['type'], self.attrs['meta']['model']['id'] ))
+        return tmp
+

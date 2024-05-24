@@ -149,7 +149,7 @@ class ReadOnlyObject( object ):
         try:
             #self.id = int( data['id'] )
             self.id = data['id']
-        except ValueError:
+        except (ValueError, TypeError) as e:
             self.id = data['id']
         self.attrs = data['attributes']
         try:
@@ -436,11 +436,11 @@ class ReadOnlyObject( object ):
             obj = self._parent.addICAP( id=item['id'] )
         elif type_name == "ip-address-list":
             obj = self._parent.addIPList( id=item['id'] )
-        elif type_name == "local-json-web-key-sets":
+        elif type_name == "local-json-web-key-set":
             obj = self._parent.addJWKS( id=item['id'], remote=False )
-        elif type_name == "remote-json-web-key-sets":
+        elif type_name == "remote-json-web-key-set":
             obj = self._parent.addJWKS( id=item['id'], renmote=True )
-        elif type_name == "keberos-environment":
+        elif type_name == "kerberos-environment":
             obj = self._parent.addKerberos( id=item['id'] )
         elif type_name == "mapping":
             obj = self._parent.addMapping( id=item['id'] )

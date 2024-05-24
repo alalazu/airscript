@@ -1,14 +1,17 @@
 .venv/
 .vscode/
 html/
+build/
 dist/
 ebuilds/
 /*.zip
 .vs/
 src/.vs
+src/airlock_airscript.egg-info
 src/airscript.egg-info
 __pycache__/
 src/airscript.rc
 /config.yaml
 /airscript.rc
 /gaga.py
+/dummy.yaml

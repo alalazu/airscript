@@ -25,5 +25,6 @@ class NetworkEndpoint( baseObject.BaseObject ):
     def __init__( self, parent, obj=None, id=None ):
         self._typename = 'allowed-network-endpoint'
         self._path = 'allowed-network-endpoints'
+        self._kind = 'AllowedNetworkEndpoint'
         baseObject.BaseObject.__init__( self, parent, obj=obj, id=id )
     

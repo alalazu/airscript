@@ -1,0 +1,425 @@
+access:
+  authenticationFlow: REDIRECT
+  backendLogoutUrl: ''
+  clientCertificateAuthentication: NOT_REQUIRED
+  credentialsPropagation:
+    mandatory: false
+    type: NONE
+  deniedUrl:
+    mode: GLOBAL
+    value: /
+  ntlmPassthroughEnabled: false
+  restrictions: []
+  tokenTransport:
+    cookieExtraction:
+      enabled: false
+      name: ''
+    headerExtraction:
+      enabled: false
+      extractionPattern:
+        caseIgnored: true
+        pattern: '^Authorization: Bearer (.*)$'
+      replaceWith: $1
+    parameterExtraction:
+      enabled: false
+      name: ''
+    presenceMandatoryEnforced: false
+  tokenVerification:
+    claimRestrictions: []
+    expiryCheckEnabled: false
+    expiryCheckSkew: 10
+    extractTechnicalClientIdEnabled: false
+    extractTechnicalClientIdName: ''
+    roleExtractions: []
+    setAuditTokenFromSubjectEnabled: false
+    signatureCheckEnforced: true
+  tokensEnabled: false
+apiSecurity:
+  apiPolicy:
+    enabled: false
+    keyExtractionCookie:
+      cookieName: ApiKey
+      enabled: false
+    keyExtractionHeader:
+      enabled: true
+      extractionPattern:
+        caseIgnored: false
+        inverted: false
+        pattern: '^Api-Key: (.*)$'
+      replaceWith: $1
+    keyExtractionQueryParameter:
+      enabled: false
+      parameterName: api_key
+  graphql:
+    enabled: false
+    introspectionAllowed: true
+    logOnly: false
+    mutationsAllowed: true
+    schemaEnforced: false
+    valuesChecked: true
+  json:
+    contentTypePattern:
+      caseIgnored: true
+      inverted: false
+      pattern: json
+    valuesChecked: true
+  openApi:
+    enabled: false
+    logOnly: false
+    pathMatching: ClientView
+    responseCheckEnforced: false
+    specificationPublishPath: ''
+    specificationPublished: false
+  treatPathSegmentsAsParamValues: true
+application:
+  controlApiAllowed: false
+  encryptedCookies:
+    enabled: false
+    prefix: ''
+  environmentCookiesEnabled: false
+  loadBalancingCookieEnabled: false
+  passthroughCookies:
+    enabled: false
+    prefix: ''
+  redirectForErrorPageEnabled: false
+  request:
+    charset: UTF_8_FALLBACK_WINDOWS_1252
+    header:
+      allowlist:
+        additional:
+          pattern: ''
+        defaultEnabled: true
+      denylist:
+        additional:
+          pattern: ''
+        defaultEnabled: true
+      enforceUtf8: true
+    parameter:
+      enforceUtf8: true
+    path:
+      enforceUtf8: true
+  response:
+    body:
+      rewrites: []
+    compressionAllowed: false
+    errorPage:
+      rewrites: []
+    header:
+      allowlist:
+        additional:
+          pattern: ''
+        defaultEnabled: false
+      denylist:
+        additional:
+          pattern: ''
+        defaultEnabled: true
+      location:
+        rewrites: []
+    html:
+      rewrites: []
+    json:
+      rewrites: []
+    stripCommentsEnabled: true
+  sessionHandling: ENFORCE_SESSION
+  webSocketsAllowed: false
+backendPath: /
+botManagement:
+  clientCookieSupportEnforced: false
+  customBots:
+    allowed: false
+    domainPattern:
+      inverted: false
+      pattern: ''
+    sourceDomainEnforced: false
+    userAgentPattern:
+      caseIgnored: false
+      inverted: false
+      pattern: ''
+  logOnly: false
+  wellKnownBots:
+    allowed: true
+    sourceDomainEnforced: true
+csrfProtection:
+  enabled: false
+  invalidTokenRedirectLocation: /%ENTRYPATH%
+  pathExceptions:
+  - caseIgnored: false
+    pattern: ''
+dosAttackPrevention:
+  enabled: false
+  interval: 60
+  maxRequestsPerInterval: 500
+enableMaintenancePage: false
+entryPath:
+  enforceTrailingSlashes: false
+  ignoreCase: false
+  priority: 0
+  regexFormatEnforced: false
+  value: /
+expertSettings:
+  apache:
+    enabled: false
+    settings: ''
+  securityGate:
+    enabled: false
+    settings: ''
+httpParameterPollutionDetection:
+  mixedTypes:
+    enabled: true
+    logOnly: false
+    parameterNameExceptionPattern:
+      caseIgnored: false
+      inverted: false
+      pattern: ''
+  sameType:
+    enabled: true
+ipRules:
+  dynamicIpAddressBlacklist:
+    countMode: 'OFF'
+    enabled: false
+  ipAddressBlacklists:
+    logOnly: false
+    webrootThreatCategories: ''
+  ipAddressWhitelists:
+    logOnly: false
+labels: []
+limits:
+  general:
+    maxPathLength: 1024
+    maxRequestBodySize: 104857600
+  graphql:
+    enabled: false
+    maxQueryNestingDepth: 10
+    maxQuerySize: 1024
+    maxValueLength: 256
+  http:
+    maxParameterNameLength: 128
+    maxParameterValueLength: 1024
+    maxParameters: 128
+  json:
+    enabled: true
+    maxArrayItems: 500
+    maxKeyLength: 256
+    maxKeys: 250
+    maxNestingDepth: 100
+    maxTotalEntries: 150000
+    maxValueLength: 8192
+locking:
+  access:
+    authenticationFlow: false
+    backendLogoutUrl: false
+    clientCertificateAuthentication: false
+    credentialsPropagation:
+      mandatory: false
+      type: false
+    deniedUrl:
+      mode: false
+      value: false
+    ntlmPassthroughEnabled: false
+    restrictions: false
+    tokenTransport:
+      cookieExtraction:
+        enabled: false
+        name: false
+      headerExtraction:
+        enabled: false
+        extractionPattern: false
+        replaceWith: false
+      parameterExtraction:
+        enabled: false
+        name: false
+      presenceMandatoryEnforced: false
+    tokenVerification:
+      claimRestrictions: false
+      expiryCheckEnabled: false
+      expiryCheckSkew: false
+      extractTechnicalClientIdEnabled: false
+      extractTechnicalClientIdName: false
+      localJwksProviders: false
+      remoteJwksProviders: false
+      roleExtractions: false
+      setAuditTokenFromSubjectEnabled: false
+    tokensEnabled: false
+  apiSecurity:
+    apiPolicy:
+      enabled: false
+      keyExtractionCookie:
+        cookieName: false
+        enabled: false
+      keyExtractionHeader:
+        enabled: false
+        extractionPattern: false
+        replaceWith: false
+      keyExtractionQueryParameter:
+        enabled: false
+        parameterName: false
+      serviceId: false
+    graphql:
+      enabled: false
+      introspectionAllowed: false
+      logOnly: false
+      mutationsAllowed: false
+      schemaEnforced: false
+      valuesChecked: false
+    json:
+      contentTypePattern: false
+      valuesChecked: false
+    openApi:
+      documentId: false
+      enabled: false
+      logOnly: false
+      pathMatching: false
+      responseCheckEnforced: false
+      specificationPublishPath: false
+      specificationPublished: false
+    treatPathSegmentsAsParamValues: false
+  application:
+    controlApiAllowed: false
+    encryptedCookies:
+      enabled: false
+      prefix: false
+    environmentCookiesEnabled: false
+    loadBalancingCookieEnabled: false
+    passthroughCookies:
+      enabled: false
+      prefix: false
+    redirectForErrorPageEnabled: false
+    request:
+      charset: false
+      header:
+        allowlist:
+          additional: false
+          defaultEnabled: false
+        denylist:
+          additional: false
+          defaultEnabled: false
+        enforceUtf8: false
+      parameter:
+        enforceUtf8: false
+      path:
+        enforceUtf8: false
+    response:
+      body:
+        rewrites: false
+      compressionAllowed: false
+      errorPage:
+        rewrites: false
+      header:
+        allowlist:
+          additional: false
+          defaultEnabled: false
+        denylist:
+          additional: false
+          defaultEnabled: false
+        location:
+          rewrites: false
+      html:
+        rewrites: false
+      json:
+        rewrites: false
+      stripCommentsEnabled: false
+    sessionHandling: false
+    webSocketsAllowed: false
+  backendPath: false
+  botManagement:
+    clientCookieSupportEnforced: false
+    customBots:
+      allowed: false
+      domainPattern: false
+      sourceDomainEnforced: false
+      userAgentPattern: false
+    logOnly: false
+    wellKnownBots:
+      allowed: false
+      sourceDomainEnforced: false
+  csrfProtection:
+    enabled: false
+    invalidTokenRedirectLocation: false
+    pathExceptions: false
+  dosAttackPrevention:
+    enabled: false
+    interval: false
+    maxRequestsPerInterval: false
+  enableMaintenancePage: false
+  enabled: false
+  entryPath:
+    enforceTrailingSlashes: false
+    priority: false
+    regexFormatEnforced: false
+    settings: false
+  httpParameterPollutionDetection:
+    mixedTypes:
+      enabled: false
+      logOnly: false
+      parameterNameExceptionPattern: false
+    sameType:
+      enabled: false
+  icap:
+    request:
+      backendViews: false
+      clientViews: false
+    response:
+      backendViews: false
+  ipRules:
+    dynamicIpAddressBlacklist:
+      countMode: false
+      enabled: false
+    ipAddressBlacklists:
+      logOnly: false
+    ipAddressWhitelists:
+      logOnly: false
+  labels: false
+  limits:
+    general:
+      maxPathLength: false
+      maxRequestBodySize: false
+    graphql:
+      enabled: false
+      maxLengthException: false
+      maxQueryNestingDepth: false
+      maxQuerySize: false
+      maxValueLength: false
+    http:
+      maxParameterLengthException: false
+      maxParameterNameLength: false
+      maxParameterValueLength: false
+      maxParameters: false
+    json:
+      enabled: false
+      maxArrayItems: false
+      maxKeyLength: false
+      maxKeys: false
+      maxLengthException: false
+      maxNestingDepth: false
+      maxTotalEntries: false
+      maxValueLength: false
+  operationalMode: false
+  requestBodyStreaming:
+    contentTypePattern: false
+    enabled: false
+    httpMethodPattern: false
+    pathPattern: false
+  threatHandling: false
+  timeouts:
+    backend: false
+    sessionIdle: false
+operationalMode: PRODUCTION
+requestBodyStreaming:
+  contentTypePattern:
+    caseIgnored: true
+    inverted: false
+    pattern: ''
+  enabled: false
+  httpMethodPattern:
+    caseIgnored: false
+    inverted: false
+    pattern: ''
+  pathPattern:
+    caseIgnored: false
+    inverted: false
+    pattern: ''
+tenant: ''
+threatHandling: BLOCK
+timeouts:
+  backend: 120
+  sessionIdle: 0

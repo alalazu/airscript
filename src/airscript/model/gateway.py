@@ -152,6 +152,14 @@ class Gateway( object ):
                 return c
         return None
     
+    def configurationCreate( self ):
+        """
+        Create a new empty configuration.
+        """
+        self._conn.post( "/configuration/configurations/load-empty-config", expect=[204] )
+        self.configs['_new'] = configuration.Configuration( None, self._conn, self._run_info.config )
+        return self.configs['_new']
+    
     def configurationImport( self, fname ):
         """
         Import Airlock Gateway configuration.

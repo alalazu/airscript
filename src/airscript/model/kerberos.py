@@ -26,6 +26,7 @@ class Kerberos( baseObject.BaseObject ):
     def __init__( self, parent, obj=None, id=None ):
         self._typename = 'kerberos-environment'
         self._path = 'kerberos-environments'
+        self._kind = 'KerberosEnvironment'
         baseObject.BaseObject.__init__( self, parent, obj=obj, id=id )
     
     """

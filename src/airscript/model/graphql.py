@@ -27,6 +27,7 @@ class GraphQL( baseObject.BaseObject ):
     def __init__( self, parent, obj=None, id=None ):
         self._typename = 'graphql-document'
         self._path = 'api-security/graphql-documents'
+        self._kind = 'GraphQLDocument'
         baseObject.BaseObject.__init__( self, parent, obj=obj, id=id )
     
     """

@@ -25,5 +25,6 @@ class ICAP( baseObject.BaseObject ):
     def __init__( self, parent, obj=None, id=None ):
         self._typename = 'icap-environment'
         self._path = 'icap-environments'
+        self._kind = 'ICAPEnvironment'
         baseObject.BaseObject.__init__( self, parent, obj=obj, id=id )
     

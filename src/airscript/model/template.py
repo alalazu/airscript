@@ -25,6 +25,7 @@ class Template( baseObject.ReadOnlyObject ):
     def __init__( self, parent, obj=None, id=None ):
         self._typename = 'mapping-template'
         self._path = 'templates/mappings'
+        self._kind = 'MappingTemplate'
         baseObject.ReadOnlyObject.__init__( self, parent, obj=obj, id=id )
     
     def __repr__( self ):

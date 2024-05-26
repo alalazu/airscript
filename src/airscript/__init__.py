@@ -247,3 +247,6 @@ def listCfgInfo( cfg, order="NVMBCHOGJIAKT" ):
 
 def validator( cfg, selection: list[str]=['error','warning','info'], width: int=-1 ):
     airscript.commands.validator( cfg, selection, width=width )
+
+def export( cfg, fname: str ):
+    airscript.commands.export( cfg, fname )

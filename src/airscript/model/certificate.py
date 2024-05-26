@@ -31,6 +31,7 @@ class Certificate( baseObject.BaseObject ):
     def __init__( self, parent, obj=None, id=None ):
         self._typename = 'ssl-certificate'
         self._path = 'ssl-certificates'
+        self._kind = 'TLSCertificate'
         baseObject.BaseObject.__init__( self, parent, obj=obj, id=id )
     
     def loadData( self, data: dict, update: bool=False ):

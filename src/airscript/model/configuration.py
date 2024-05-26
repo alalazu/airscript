@@ -177,19 +177,27 @@ class Configuration( object ):
         elif elementName == "virtual-host":
             func = self.vhosts
         return func
+    
+    def connectGateway( self, conn ) -> bool:
+        self.conn = conn
+        return self.conn != None
 
-    def load( self ):
+    def load( self ) -> bool:
         """ Retrieve configuration data (vhosts, mappings etc.) from Airlock Gateway using REST API. """
-        if self._loaded == False:
-            self._log.verbose( "Fetching configuration data from '{}'".format( self.conn.getName() ))
-            resp = self.conn.post( "/configuration/configurations/{}/load".format( self.id ))
-            if resp.status_code != 204:
-                self._log.error( "Loading failed: {}".format( resp.status_code ))
-            else:
-                self._loaded = True
+        if self.conn:
+            if self._loaded == False:
+                if self.id == 'new':
+                    r = self.conn.configuration.create()
+                else:
+                    self._log.verbose( "Fetching configuration data from '{}'".format( self.conn.getName() ))
+                    r = self.conn.configuration.load( self.id )
+                if r == None:
+                    self._log.error( "Loading failed: not found" )
+                else:
+                    self._loaded = True
         return self._loaded
     
-    def loadAll( self ):
+    def loadAll( self ) -> bool:
         r = self.load()
         if r:
             self.getAll()
@@ -232,7 +240,9 @@ class Configuration( object ):
         A comment is required. If you absolutely don't want to specify one, you may pass comment=\"\".
         
         Make sure to have called .update() on all modified items.
-        """ 
+        """
+        if not self.conn:
+            return False
         if comment == None:
             self._log.warning( "No comment specified! If you don't want to specify one, please use '<obj>.activate( comment=\"\" )'" )
             return False
@@ -254,6 +264,8 @@ class Configuration( object ):
         
         Make sure to have called .update() on all modified items.
         """ 
+        if not self.conn:
+            return False
         if comment == None:
             self._log.warning( "No comment specified! If you don't want to specify one, please use '<obj>.activate( comment=\"\" )'" )
             return False
@@ -269,6 +281,8 @@ class Configuration( object ):
     
     def delete( self ):
         """ Delete this configuration. """ 
+        if not self.conn:
+            return False
         resp = self.conn.delete( "/configuration/configurations/%s" % (self.id,) )
         if resp.status_code != 204:
             self._log.error( "Deletion failed: %s (%s)" % (resp.status_code,resp.text) )
@@ -277,6 +291,8 @@ class Configuration( object ):
     
     def export( self, fname: str=None ) -> str:
         """ Download configuration from Airlock Gateway as a zip file. """
+        if not self.conn:
+            return False
         if fname:
             zip_file = fname
         else:
@@ -289,14 +305,14 @@ class Configuration( object ):
         """ Retrieve validation messages for this configuration. """
         if self._loaded == False:
             if self.load() == False:
-                return
+                return {}
         self.messages = []
         resp = self.conn.get( "/configuration/validator-messages" )
         if resp.text != "":
             for entry in resp.json()['data']:
                 self.messages.append( validator.Validator( self, obj=entry ))
         if len( self.messages ) == 0:
-            return True
+            return {}
         else:
             error = []
             warning = []
@@ -310,6 +326,51 @@ class Configuration( object ):
                     info.append( entry )
             return { "error": error, "warning": warning, "info": info }
     
+    def nodes( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
+        return internal.itemList( self._nodes, id=id, name=name, ids=ids, filter=filter, sort=sort )
+
+    def vhosts( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
+        return internal.itemList( self._vhosts, id=id, name=name, ids=ids, filter=filter, sort=sort )
+
+    def mappings( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
+        return internal.itemList( self._mappings, id=id, name=name, ids=ids, filter=filter, sort=sort )
+
+    def apipolicy( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
+        return internal.itemList( self._apipolicy, id=id, name=name, ids=ids, filter=filter, sort=sort )
+
+    def backendgroups( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
+        return internal.itemList( self._backendgroups, id=id, name=name, ids=ids, filter=filter, sort=sort )
+
+    def certificates( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
+        return internal.itemList( self._certs, id=id, name=name, ids=ids, filter=filter, sort=sort )
+
+    def jwks( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
+        return internal.itemList( self._jwks, id=id, name=name, ids=ids, filter=filter, sort=sort )
+
+    def openapi( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
+        return internal.itemList( self._openapi, id=id, name=name, ids=ids, filter=filter, sort=sort )
+
+    def graphql( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
+        return internal.itemList( self._graphql, id=id, name=name, ids=ids, filter=filter, sort=sort )
+
+    def hostnames( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
+        return internal.itemList( self._hostnames, id=id, name=name, ids=ids, filter=filter, sort=sort )
+
+    def icap( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
+        return internal.itemList( self._icap, id=id, name=name, ids=ids, filter=filter, sort=sort )
+
+    def iplists( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
+        return internal.itemList( self._iplists, id=id, name=name, ids=ids, filter=filter, sort=sort )
+
+    def kerberos( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
+        return internal.itemList( self._kerberos, id=id, name=name, ids=ids, filter=filter, sort=sort )
+
+    def networkendpoints( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
+        return internal.itemList( self._network_endpoints, id=id, name=name, ids=ids, filter=filter, sort=sort )
+
+    def templates( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
+        return internal.itemList( self._templates, id=id, name=name, ids=ids, filter=filter, sort=sort )
+
     def addNode( self, id: str=None, data: dict=None ):
         if id in self._nodes:
             obj = self._nodes[id]
@@ -694,6 +755,8 @@ class Configuration( object ):
     
     def mappingFromTemplate( self, template ):
         """ Create new mapping from template. """
+        if not self.conn:
+            return False
         params = { 'data': { 'type': 'create-mapping-from-template', 'id': template.id }}
         resp = self.conn.post( "/configuration/mappings/create-from-template", data=params)
         if resp.status_code != 201:
@@ -712,6 +775,8 @@ class Configuration( object ):
         This function can be used to migrate mappings from server to server,
         e.g. across environments.
         """
+        if not self.conn:
+            return False
         files = { 'file': open( fname, 'rb' ) }
         resp = self.conn.uploadCopy( "/configuration/mappings/import-mapping", accept='application/zip', files=files )
         if resp.status_code != 200:
@@ -721,51 +786,6 @@ class Configuration( object ):
             self.getMappings()
         return True
     
-    def nodes( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
-        return internal.itemList( self._nodes, id=id, name=name, ids=ids, filter=filter, sort=sort )
-
-    def vhosts( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
-        return internal.itemList( self._vhosts, id=id, name=name, ids=ids, filter=filter, sort=sort )
-
-    def mappings( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
-        return internal.itemList( self._mappings, id=id, name=name, ids=ids, filter=filter, sort=sort )
-
-    def apipolicy( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
-        return internal.itemList( self._apipolicy, id=id, name=name, ids=ids, filter=filter, sort=sort )
-
-    def backendgroups( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
-        return internal.itemList( self._backendgroups, id=id, name=name, ids=ids, filter=filter, sort=sort )
-
-    def certificates( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
-        return internal.itemList( self._certs, id=id, name=name, ids=ids, filter=filter, sort=sort )
-
-    def jwks( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
-        return internal.itemList( self._jwks, id=id, name=name, ids=ids, filter=filter, sort=sort )
-
-    def openapi( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
-        return internal.itemList( self._openapi, id=id, name=name, ids=ids, filter=filter, sort=sort )
-
-    def graphql( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
-        return internal.itemList( self._graphql, id=id, name=name, ids=ids, filter=filter, sort=sort )
-
-    def hostnames( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
-        return internal.itemList( self._hostnames, id=id, name=name, ids=ids, filter=filter, sort=sort )
-
-    def icap( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
-        return internal.itemList( self._icap, id=id, name=name, ids=ids, filter=filter, sort=sort )
-
-    def iplists( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
-        return internal.itemList( self._iplists, id=id, name=name, ids=ids, filter=filter, sort=sort )
-
-    def kerberos( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
-        return internal.itemList( self._kerberos, id=id, name=name, ids=ids, filter=filter, sort=sort )
-
-    def networkendpoints( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
-        return internal.itemList( self._network_endpoints, id=id, name=name, ids=ids, filter=filter, sort=sort )
-
-    def templates( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
-        return internal.itemList( self._templates, id=id, name=name, ids=ids, filter=filter, sort=sort )
-
     def listNodes( self ):
         """ Return sorted list of nodes. """
         if self._nodes == None:

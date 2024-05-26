@@ -20,6 +20,7 @@
 Airscript commands
 """
 
+import yaml
 from colorama import Fore, Style
 
 from airscript.model import configuration, gateway
@@ -394,3 +395,35 @@ def _messages_out( messages: dict, lengths: list[int], color=Fore.RED ):
                                                               Fore.CYAN, lengths[1], entry[1][:lengths[1]],
                                                               Fore.WHITE, lengths[2], entry[2][:lengths[2]], lengths[3], entry[3][:lengths[3]],
                                                               color, entry[4][:lengths[4]], Style.RESET_ALL))
+
+def export( cfg, outfile: str ):
+    docs = []
+    for item in cfg.vhosts().values():
+        docs.append( item.declarativeExport() )
+    for item in cfg.mappings().values():
+        docs.append( item.declarativeExport() )
+    for item in cfg.backendgroups().values():
+        docs.append( item.declarativeExport() )
+    for item in cfg.certificates().values():
+        docs.append( item.declarativeExport() )
+    for item in cfg.jwks().values():
+        docs.append( item.declarativeExport() )
+    for item in cfg.openapi().values():
+        docs.append( item.declarativeExport() )
+    for item in cfg.graphql().values():
+        docs.append( item.declarativeExport() )
+    for item in cfg.hostnames().values():
+        docs.append( item.declarativeExport() )
+    for item in cfg.icap().values():
+        docs.append( item.declarativeExport() )
+    for item in cfg.iplists().values():
+        docs.append( item.declarativeExport() )
+    for item in cfg.kerberos().values():
+        docs.append( item.declarativeExport() )
+    for item in cfg.apipolicy().values():
+        docs.append( item.declarativeExport() )
+    for item in cfg.networkendpoints().values():
+        docs.append( item.declarativeExport() )
+    with open( outfile, "w" ) as fp:
+        yaml.dump_all( docs, stream=fp )
+

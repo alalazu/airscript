@@ -26,6 +26,7 @@ class Node( baseObject.BaseObject ):
     def __init__( self, parent, obj=None, id=None ):
         self._typename = 'node'
         self._path = 'nodes'
+        self._kind = 'GatewayClusterNode'
         baseObject.BaseObject.__init__( self, parent, obj=obj, id=id )
     
     def loadData( self, data: dict, update: bool=False ):

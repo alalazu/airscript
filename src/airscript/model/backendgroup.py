@@ -28,6 +28,7 @@ class Backendgroup( baseObject.BaseObject ):
     def __init__( self, parent, obj=None, id=None ):
         self._typename = 'back-end-group'
         self._path = 'back-end-groups'
+        self._kind = 'BackendGroup'
         baseObject.BaseObject.__init__( self, parent, obj=obj, id=id )
     
     def items( self ):
@@ -39,6 +40,11 @@ class Backendgroup( baseObject.BaseObject ):
         tmp = super().values()
         tmp.append( self._hosts )
         return tmp
+    
+    def getAttrs( self ):
+        r = super().getAttrs()
+        r['backendHosts'] = [host.export() for host in self._hosts]
+        return r
     
     def hosts( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
         return internal.itemList( self._hosts, id=id, name=name, ids=ids, filter=filter, sort=sort )
@@ -101,4 +107,14 @@ class Backend( object ):
     
     def dict( self ):
         return self.__dict__
+    
+    def export( self ):
+        return {
+            'protocol': self.protocol,
+            'hostName': self.hostName,
+            'port': self.port,
+            'mode': self.mode,
+            'spare': self.spare,
+            'weight': self.weight
+        }
 

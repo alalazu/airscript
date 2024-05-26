@@ -27,6 +27,7 @@ class Mapping( baseObject.BaseObject ):
     def __init__( self, parent, obj=None, id=None ):
         self._typename = 'mapping'
         self._path = 'mappings'
+        self._kind = 'Mapping'
         baseObject.BaseObject.__init__( self, parent, obj=obj, id=id )
     
     def me( self ):

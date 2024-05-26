@@ -25,5 +25,6 @@ class Host( baseObject.BaseObject ):
     def __init__( self, parent, obj=None, id=None ):
         self._typename = 'host'
         self._path = 'hosts'
+        self._kind = 'Host'
         baseObject.BaseObject.__init__( self, parent, obj=obj, id=id )
     

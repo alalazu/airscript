@@ -1,0 +1,58 @@
+backendHosts:
+- hostName: ''
+  mode: ENABLED
+  protocol: 'HTTP'
+  port: 80
+  spare: false
+  weight: 100
+conditions:
+  clientHostHeaderPattern:
+    pattern: ''
+  priority: 0
+expertSettings:
+  securityGate:
+    enabled: false
+    settings: ''
+inBandChecks:
+  checkResponseContentEnabled: false
+  contentPattern:
+    caseIgnored: true
+    inverted: false
+    pattern: Service Unavailable
+  contentTypePattern:
+    inverted: false
+    pattern: ^(text|application)/(html|xhtml)
+  enabled: false
+  maxContentSize: 512
+  statusPattern:
+    enabled: true
+    inverted: false
+    pattern: ^503$
+outOfBandChecks:
+  checksWhenBad:
+    interval: 3
+    switchAfter: 3
+  checksWhenGood:
+    interval: 5
+    switchAfter: 3
+  contentPattern:
+    caseIgnored: true
+    enabled: false
+    inverted: false
+    pattern: Service Unavailable
+  enabled: false
+  statusPattern:
+    enabled: true
+    inverted: false
+    pattern: ^503$
+  timeout: 2
+  url: /
+tenant: ''
+tls:
+  cipherSuite: DEFAULT
+  forceNewSession: false
+  protocol: DEFAULT
+  serverCertificateValidation:
+    caCertificates: []
+    enabled: true
+    verifyHost: true

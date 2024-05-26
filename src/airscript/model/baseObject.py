@@ -46,6 +46,8 @@ class ReadOnlyObject( object ):
             self._typename = ""         # overwritten by individual object types
         if not hasattr( self, '_path' ):
             self._path = ""             # overwritten by individual object types
+        if not hasattr( self, '_kind' ):
+            self._kind = ""             # overwritten by individual object types
         self._deleted = False
         self._attrs_modified = False
         self._rels_modified = False
@@ -68,6 +70,9 @@ class ReadOnlyObject( object ):
     
     def getPath( self ):
         return self._path
+    
+    def getKind( self ):
+        return self._kind
     
     def items( self ):
         return { 'id': self.id, 'name': self.name, 
@@ -97,9 +102,6 @@ class ReadOnlyObject( object ):
     
     def printRels( self ):
         pprint.pprint( self.rels )
-    
-    def getAttrs( self ):
-        return self.attrs
     
     def isDeleted( self ):
         return self._deleted
@@ -306,12 +308,19 @@ class ReadOnlyObject( object ):
         if removeBacklink:
             reference.deleteRel( self, removeBacklink=False, markOnly=markOnly )
         return True
-
+    
     def checkRel( self, reference ) -> bool:
         rel = self._findRel( reference )
         if rel == None:
             return False
         return True
+
+    def listRelWithKind( self ) -> dict:
+        r = {}
+        for type_name in self.rels:
+            kind = self.rels[type_name][0].reference.getKind()
+            r[kind] = [ref.reference.name for ref in self.rels[type_name]]
+        return r
 
     def sync( self ) -> bool:
         """
@@ -374,7 +383,27 @@ class ReadOnlyObject( object ):
     def jsonize( self, attrs: dict=None, addon: dict=None ) -> str:
         return json.dumps( self.datafy( attrs=attrs, addon=addon ))
     
-    
+    def declarativeExport( self ) -> dict:
+        out = {
+                'apiVersion': 'gateway.airlock.com/v1alpha',
+                'kind': self._kind,
+                'metadata': {
+                    'name': self.name,
+                    'environments': [],
+                },
+                'connections': {},
+                'spec': self.getAttrs()
+        }
+        try:
+            del out['spec']['name']
+        except KeyError:
+            pass
+        for type_name in self.rels:
+            kind = self.rels[type_name][0].reference.getKind()
+            out['connections'][kind] = [ref.reference.name for ref in self.rels[type_name]]
+        return out
+
+
     """
     interactions with Gateway REST API
     """

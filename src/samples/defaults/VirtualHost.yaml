@@ -1,0 +1,43 @@
+aliasNames: []
+defaultRedirect: /
+downloadPdfsAsAttachmentsEnforced: false
+encodedSlashesAllowed: false
+expertSettings:
+  apache:
+    enabled: false
+    settings: ''
+  securityGate:
+    enabled: false
+    settings: ''
+keepAliveTimeout: 10
+networkInterface:
+  http:
+    enabled: true
+    httpsRedirectEnforced: false
+    port: 80
+  https:
+    enabled: true
+    http2Allowed: true
+    port: 443
+  ipV4Address: ''
+  ipV6Address: ''
+pathRedirects: []
+serverAdmin: ''
+session:
+  cookieDomain: ''
+  cookiePath: /
+showMaintenancePage: false
+strictlyMatchFullyQualifiedDomainName: true
+tenant: ''
+tls:
+  caCertificatesForChainAndOcspValidation: []
+  caCertificatesForClientCertificateSelection: []
+  chainVerificationDepth: 1
+  cipherSuite: ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256
+  cipherSuiteMode: DEFAULT
+  clientCertificateAuthentication: NOT_REQUIRED
+  letsEncryptEnabled: false
+  ocspStaplingEnabled: false
+  ocspValidationEnforced: false
+  protocol: all -TLSv1 -TLSv1.1
+  protocolMode: DEFAULT

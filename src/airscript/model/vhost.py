@@ -26,6 +26,7 @@ class VirtualHost( baseObject.BaseObject ):
     def __init__( self, parent, obj=None, id=None ):
         self._typename = 'virtual-host'
         self._path = 'virtual-hosts'
+        self._kind = 'VirtualHost'
         baseObject.BaseObject.__init__( self, parent, obj=obj, id=id )
     
     def me( self ):

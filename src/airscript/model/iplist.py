@@ -27,6 +27,7 @@ class IPList( baseObject.BaseObject ):
     def __init__( self, parent, obj=None, id=None ):
         self._typename = 'ip-address-list'
         self._path = 'ip-address-lists'
+        self._kind = 'IPList'
         baseObject.BaseObject.__init__( self, parent, obj=obj, id=id )
     
     def me( self ):

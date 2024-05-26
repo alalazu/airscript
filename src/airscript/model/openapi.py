@@ -27,7 +27,13 @@ class OpenAPI( baseObject.BaseObject ):
     def __init__( self, parent, obj=None, id=None ):
         self._typename = 'openapi-document'
         self._path = 'api-security/openapi-documents'
+        self._kind = 'OpenAPIDocument'
         baseObject.BaseObject.__init__( self, parent, obj=obj, id=id )
+    
+    def getAttrs( self ):
+        r = super().getAttrs()
+        r['content'] = self._parent.conn.openapi.download( self.id )
+        return r
     
     """
     interactions with Gateway REST API

@@ -49,10 +49,10 @@ class DConfig( object ):
                 for doc in yaml.safe_load_all( renderer.render( os.path.join( self._dirname, fname ))):
                     if not doc:
                         continue
-                    declarative_doc = yaml_doc.Doc( self.next_id, yaml_dict=doc, env=env )
+                    declarative_doc = yaml_doc.Doc( self.next_id, yaml_dict=doc, env=env, dconfig=self )
                     if declarative_doc.isInEnv( env ):
                         self._docs[fname][declarative_doc.key] = declarative_doc
-                        self._map[declarative_doc.key] = fname
+                        self._map[declarative_doc.key] = (fname, declarative_doc)
                     self.next_id += 1
             except yaml.scanner.ScannerError:
                 # probably templating code - just ignore the file
@@ -61,6 +61,13 @@ class DConfig( object ):
                 pass
         self._env = env
         self._loaded = "raw" if raw else "config"
+    
+    def findDoc( self, kind: str, name: str ) -> yaml_doc.Doc:
+        key = yaml_doc.create_key( param_set=(kind, name) )
+        try:
+            return self._map[key][1]
+        except KeyError:
+            return None
 
     def _load_org( self ):
         if not os.path.isdir( self._dirname ):
@@ -78,8 +85,8 @@ class DConfig( object ):
                         if not doc:
                             continue
                         key = yaml_doc.create_key( yaml_dict=doc )
-                        self._map[key] = fname
-                        self._docs[fname][key] = yaml_doc.Doc( yaml_dict=doc )
+                        self._map[key] = (fname, doc)
+                        self._docs[fname][key] = yaml_doc.Doc( yaml_dict=doc, dconfig=self )
                 except yaml.scanner.ScannerError:
                     # probably templating code - just ignore the file
                     # upon merge & save, the documents defined in this file will be exported to 'declarative.export-file'
@@ -190,10 +197,10 @@ class DConfig( object ):
             self._docMerge( item, env )
 
     def _docMerge( self, item: baseObject.ReadOnlyObject, env: str=None ):
-        doc = yaml_doc.Doc( self.next_id, base_object=item, env=env )
+        doc = yaml_doc.Doc( self.next_id, base_object=item, env=env, dconfig=self )
         self.next_id += 1
         try:
-            fname = self._map[doc.key]
+            fname = self._map[doc.key][0]
         except KeyError:
             fname = None
         if not fname:

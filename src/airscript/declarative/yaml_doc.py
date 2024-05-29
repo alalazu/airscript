@@ -20,6 +20,7 @@ from typing import Self
 
 from airscript.declarative import changelog, defaults, envvalue
 from airscript.model import baseObject
+from pyAirlock.common import utils
 
 from pprint import pprint as pp
 
@@ -34,53 +35,50 @@ def create_key( base_object: baseObject.ReadOnlyObject=None, yaml_dict: dict=Non
 
 
 class Doc( object ):
-    def __init__( self, id: str=None, base_object: baseObject.ReadOnlyObject=None, yaml_dict: dict=None, env: str=None ):
+    def __init__( self, id: str=None, base_object: baseObject.ReadOnlyObject=None, yaml_dict: dict=None, env: str=None, dconfig=None ):
         self.id = id
         self._base_object = base_object
+        self._dconfig = dconfig
         if base_object:
             self._kind = base_object.getKind()
             self._name = base_object.name
             self._connections = { env if env else "default": base_object.listRelWithKind() }
             self._environments = [ env ] if env != None else None
+            self._parents = None
             self.key = create_key( base_object=base_object )
             self._spec = self._copyNonDefaults( base_object.getAttrs(), defaults.get( self._kind ))
         else:
             self._kind = yaml_dict['kind']
             self._name = yaml_dict['metadata']['name']
             self._spec = self._loadYAML( yaml_dict['spec'] )
-            pp( {"1": yaml_dict['connections']} )
             if env:
-                try:
-                    base  = yaml_dict['connections']['default']
-                except KeyError:
-                    base = {}
-                try:
-                    ovrl = yaml_dict['connections'][env]
-                except KeyError:
-                    ovrl = {}
+                base = utils.getDictValue( yaml_dict, 'metadata.connections.default', {} )
+                ovrl = utils.getDictValue( yaml_dict, f'metadata.connections.{env}', {} )
+                # try:
+                #     base  = yaml_dict['metadata']['connections']['default']
+                # except KeyError:
+                #     base = {}
+                # try:
+                #     ovrl = yaml_dict['metadata']['connections'][env]
+                # except KeyError:
+                #     ovrl = {}
                 for k,v in base.items():
                     if not k in ovrl:
                         ovrl[k] = v
                 self._connections = { env: ovrl }
-                """
-                try:
-                    connections = yaml_dict['connections']['default']
-                except KeyError:
-                    connections = []
-                try:
-                    connections = set( connections + yaml_dict['connections'][env])
-                except KeyError:
-                    pass
-                self._connections = { env: list( connections ) }
-                """
                 self._spec = self._reduce2Env( self._spec, env )
             else:
-                self._connections = yaml_dict['connections']
-            pp( {"2": self._connections} )
-            try:
-                self._environments = yaml_dict['metadata']['environments']
-            except KeyError:
-                self._environments = None
+                self._connections = yaml_dict['metadata']['connections']
+            self._environments = utils.getDictValue( yaml_dict, 'metadata.environments' )
+            self._parents = utils.getDictValue( yaml_dict, 'metadata.inherits', [] )
+            # try:
+            #     self._environments = yaml_dict['metadata']['environments']
+            # except KeyError:
+            #     self._environments = None
+            # try:
+            #     self._parents = yaml_dict['metadata']['inherits']
+            # except KeyError:
+            #     self._parents = None
             self.key = create_key( yaml_dict=yaml_dict )
         self._changelog = changelog.ChangeLog()
         try:
@@ -111,9 +109,24 @@ class Doc( object ):
         return False
 
     def getSpec( self ) -> dict:
-        r = self._overwriteValues( defaults.get( self._kind ), self._spec )
+        r = self._inheritSpec( defaults.get( self._kind ), self )
+        # base = defaults.get( self._kind )
+        # if self._dconfig and self._parents:
+        #     base = self._inheritSpec( base, self )
+        #     # for name in self._parents:
+        #     #     doc = self._dconfig.findDoc( self._kind, name )
+        #     #     base = self._inheritSpec( base, doc )
+        # r = self._overwriteValues( base, self._spec )
         r['name'] = self._name
         return r
+    
+    def _inheritSpec( self, base, doc: Self ) -> dict:
+        if doc._parents == None or doc._parents == []:
+            return self._overwriteValues( base, doc._spec )
+        for name in doc._parents:
+            parent_doc = self._dconfig.findDoc( self._kind, name )
+            base = self._inheritSpec( base, parent_doc )
+        return self._overwriteValues( base, self._spec )
     
     def getConnections( self, env: str=None ) -> dict:
         try:
@@ -121,14 +134,17 @@ class Doc( object ):
         except KeyError:
             return self._connections[env][list( self._connections[env].keys() )[0]]
     
+    def getParents( self ) -> list:
+        return self._parents
+    
     def export( self ) -> dict:
         r =  {
                 'apiVersion': 'gateway.airlock.com/v1alpha',
                 'kind': self._kind,
                 'metadata': {
                     'name': self._name,
+                    'connections': self._connections,
                 },
-                'connections': self._connections,
                 'spec': self._spec,
         }
         if self._environments:
@@ -305,11 +321,17 @@ class Doc( object ):
                 r[key] = value
         return r
     
+    def _check4EnvVarKey( self, data: dict ) -> bool:
+        for key in data:
+            if "##env##" in key:
+                return True
+        return False
+
     def _loadYAML( self, data: dict ) -> dict:
         r = {}
         for key, value in data.items():
             if isinstance( value, dict ):
-                if "##env##" in value:
+                if self._check4EnvVarKey( value ):
                     r[key] = self._loadEnvValue( value )
                 else:
                     r[key] = self._loadYAML( value )
@@ -317,7 +339,7 @@ class Doc( object ):
                 r[key] = []
                 for entry in value:
                     if isinstance( entry, dict ):
-                        if "##env##" in entry:
+                        if self._check4EnvVarKey( value ):
                             r[key].append( self._loadEnvValue( entry ))
                         else:
                             r[key].append( self._loadYAML( entry ))

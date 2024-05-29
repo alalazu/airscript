@@ -44,19 +44,22 @@ from typing import Union
 from airscript.model import api_policy
 from airscript.model import backendgroup
 from airscript.model import certificate
-from airscript.model import graphql
+from airscript.model import graphql as graphql_object
 from airscript.model import host
-from airscript.model import icap
+from airscript.model import icap as icap_object
 from airscript.model import iplist
-from airscript.model import jwks
-from airscript.model import kerberos
+from airscript.model import jwks as jwks_object
+from airscript.model import kerberos as kerberos_object
 from airscript.model import mapping
 from airscript.model import network_endpoint
 from airscript.model import node
-from airscript.model import openapi
+from airscript.model import openapi as openapi_object
 from airscript.model import template
 from airscript.model import vhost
 from airscript.model import validator
+
+from airscript.model import gateway
+from pyAirlock.gateway.config_api import gateway as gw_api
 
 from airscript.utils import internal
 from pyAirlock.common import log
@@ -82,7 +85,7 @@ class Configuration( object ):
             "virtual-host": 4000,
     }
 
-    def __init__( self, obj, conn, airscript_config ):
+    def __init__( self, obj, conn: gw_api.GW, airscript_config ):
         if obj != None:
             self.id = obj['id']
             self.comment = obj['attributes']['comment']
@@ -179,8 +182,8 @@ class Configuration( object ):
             func = self.vhosts
         return func
     
-    def connectGateway( self, conn ) -> bool:
-        self.conn = conn
+    def connectGateway( self, gw: gateway.Gateway ) -> bool:
+        self.conn = gw.getConnection()
         return self.conn != None
 
     def load( self ) -> bool:
@@ -225,7 +228,7 @@ class Configuration( object ):
                 del self.objects[element][key]
             # self.objects[element] = objs
     
-    def elementOrderNr( self, type_name ):
+    def elementOrderNr( self, type_name: str ) -> int:
         try:
             return self.RELATIONSHIP_ORDER[type_name]
         except KeyError:
@@ -234,11 +237,13 @@ class Configuration( object ):
     def elementOrderList( self ):
         return sorted( self.RELATIONSHIP_ORDER, key=lambda s: int(self.RELATIONSHIP_ORDER[s]) )
     
-    def activate( self, comment=None ):
+    def activate( self, comment: str=None ) -> bool:
         """
         Activate this configuration.
         
-        A comment is required. If you absolutely don't want to specify one, you may pass comment=\"\".
+        A comment is required. When updating an existing configuration or when the comment property of a new configuration is unset,
+        the comment has to be specified when calling `activate`.
+        If you absolutely don't want to specify one (against all best practices), you may pass comment=\"\".
         
         Make sure to have called .update() on all modified items.
         """
@@ -257,11 +262,13 @@ class Configuration( object ):
             return False
         return True
     
-    def save( self, comment=None ):
+    def save( self, comment: str=None ) -> bool:
         """
         Save this configuration.
         
-        A comment is required. If you absolutely don't want to specify one, you may pass comment=\"\".
+        A comment is required. When updating an existing configuration or when the comment property of a new configuration is unset,
+        the comment has to be specified when calling `activate`.
+        If you absolutely don't want to specify one (against all best practices), you may pass comment=\"\".
         
         Make sure to have called .update() on all modified items.
         """ 
@@ -302,7 +309,7 @@ class Configuration( object ):
         self._log.verbose( f"Configuration saved to '{zip_file}'" )
         return zip_file
     
-    def validate( self ):
+    def validate( self ) -> dict:
         """ Retrieve validation messages for this configuration. """
         if self._loaded == False:
             if self.load() == False:
@@ -407,7 +414,7 @@ class Configuration( object ):
             obj = self.addVHost( id=id, data=data )
         return obj
 
-    def addNode( self, id: str=None, data: dict=None ):
+    def addNode( self, id: str=None, data: dict=None ) -> node.Node:
         if id in self._nodes:
             obj = self._nodes[id]
             if data:
@@ -417,7 +424,7 @@ class Configuration( object ):
             self._nodes[obj.id] = obj
         return obj
 
-    def addVHost( self, id: str=None, data: dict=None ):
+    def addVHost( self, id: str=None, data: dict=None ) -> vhost.VirtualHost:
         if id in self._vhosts:
             obj = self._vhosts[id]
             if data:
@@ -427,7 +434,7 @@ class Configuration( object ):
             self._vhosts[obj.id] = obj
         return obj
     
-    def addMapping( self, id: str=None, data: dict=None ):
+    def addMapping( self, id: str=None, data: dict=None ) -> mapping.Mapping:
         if id in self._mappings:
             obj = self._mappings[id]
             if data:
@@ -437,7 +444,7 @@ class Configuration( object ):
             self._mappings[obj.id] = obj
         return obj
     
-    def addTemplate( self, id: str=None, data: dict=None ):
+    def addTemplate( self, id: str=None, data: dict=None ) -> template.Template:
         if id in self._templates:
             obj = self._templates[id]
             if data:
@@ -447,7 +454,7 @@ class Configuration( object ):
             self._templates[obj.name] = obj
         return obj
     
-    def addAPIPolicy( self, id: str=None, data: dict=None ):
+    def addAPIPolicy( self, id: str=None, data: dict=None ) -> api_policy.APIPolicy:
         if id in self._apipolicy:
             obj = self._apipolicy[id]
             if data:
@@ -457,7 +464,7 @@ class Configuration( object ):
             self._apipolicy[obj.id] = obj
         return obj
     
-    def addBackendGroup( self, id: str=None, data: dict=None ):
+    def addBackendGroup( self, id: str=None, data: dict=None ) -> backendgroup.Backendgroup:
         if id in self._backendgroups:
             obj = self._backendgroups[id]
             if data:
@@ -467,7 +474,7 @@ class Configuration( object ):
             self._backendgroups[obj.id] = obj
         return obj
     
-    def addCertificate( self, id: str=None, data: dict=None ):
+    def addCertificate( self, id: str=None, data: dict=None ) -> certificate.Certificate:
         if id in self._certs:
             obj = self._certs[id]
             if data:
@@ -477,37 +484,37 @@ class Configuration( object ):
             self._certs[obj.id] = obj
         return obj
     
-    def addJWKS( self, id: str=None, data: dict=None, remote: bool=True ):
+    def addJWKS( self, id: str=None, data: dict=None, remote: bool=True ) -> jwks_object.JWKS:
         if id in self._jwks:
             obj = self._jwks[id]
             if data:
                 obj.loadData( data=data )
         else:
-            obj = jwks.JWKS( self, obj=data, id=id, remote=remote )
+            obj = jwks_object.JWKS( self, obj=data, id=id, remote=remote )
             self._jwks[obj.id] = obj
         return obj
     
-    def addOpenAPI( self, id: str=None, data: dict=None ):
+    def addOpenAPI( self, id: str=None, data: dict=None ) -> openapi_object.OpenAPI:
         if id in self._openapi:
             obj = self._openapi[id]
             if data:
                 obj.loadData( data=data )
         else:
-            obj = openapi.OpenAPI( self, obj=data, id=id )
+            obj = openapi_object.OpenAPI( self, obj=data, id=id )
             self._openapi[obj.id] = obj
         return obj
     
-    def addGraphQL( self, id: str=None, data: dict=None ):
+    def addGraphQL( self, id: str=None, data: dict=None ) -> graphql_object.GraphQL:
         if id in self._graphql:
             obj = self._graphql[id]
             if data:
                 obj.loadData( data=data )
         else:
-            obj = graphql.GraphQL( self, obj=data, id=id )
+            obj = graphql_object.GraphQL( self, obj=data, id=id )
             self._graphql[obj.id] = obj
         return obj
     
-    def addHostName( self, id: str=None, data: dict=None ):
+    def addHostName( self, id: str=None, data: dict=None ) -> host.Host:
         if id in self._hostnames:
             obj = self._hostnames[id]
             if data:
@@ -517,17 +524,17 @@ class Configuration( object ):
             self._hostnames[obj.id] = obj
         return obj
     
-    def addICAP( self, id: str=None, data: dict=None ):
+    def addICAP( self, id: str=None, data: dict=None ) -> icap_object.ICAP:
         if id in self._icap:
             obj = self._icap[id]
             if data:
                 obj.loadData( data=data )
         else:
-            obj = icap.ICAP( self, obj=data, id=id )
+            obj = icap_object.ICAP( self, obj=data, id=id )
             self._icap[obj.id] = obj
         return obj
     
-    def addIPList( self, id: str=None, data: dict=None ):
+    def addIPList( self, id: str=None, data: dict=None ) -> iplist.IPList:
         if id in self._iplists:
             obj = self._iplists[id]
             if data:
@@ -537,7 +544,7 @@ class Configuration( object ):
             self._iplists[obj.id] = obj
         return obj
     
-    def addNetworkEndpoint( self, id: str=None, data: dict=None ):
+    def addNetworkEndpoint( self, id: str=None, data: dict=None ) -> network_endpoint.NetworkEndpoint:
         if id in self._network_endpoints:
             obj = self._network_endpoints[id]
             if data:
@@ -547,13 +554,13 @@ class Configuration( object ):
             self._network_endpoints[obj.id] = obj
         return obj
     
-    def addKerberos( self, id: str=None, data: dict=None ):
+    def addKerberos( self, id: str=None, data: dict=None ) -> kerberos_object.Kerberos:
         if id in self._kerberos:
             obj = self._kerberos[id]
             if data:
                 obj.loadData( data=data )
         else:
-            obj = kerberos.Kerberos( self, obj=data, id=id )
+            obj = kerberos_object.Kerberos( self, obj=data, id=id )
             self._kerberos[obj.id] = obj
         return obj
     
@@ -789,7 +796,7 @@ class Configuration( object ):
         self._log.verbose( "- Virtual hosts" )
         self.getVHosts()
     
-    def mappingFromTemplate( self, template ):
+    def mappingFromTemplate( self, template ) -> bool:
         """ Create new mapping from template. """
         if not self.conn:
             return False
@@ -804,7 +811,7 @@ class Configuration( object ):
                 self._mappings[m.id] = m
         return True
     
-    def mappingImport( self, fname ):
+    def mappingImport( self, fname ) -> bool:
         """
         Upload configuration zip file to Airlock Gateway.
         
@@ -822,7 +829,7 @@ class Configuration( object ):
             self.getMappings()
         return True
     
-    def listNodes( self ):
+    def listNodes( self ) -> list[dict[node.Node]]:
         """ Return sorted list of nodes. """
         if self._nodes == None:
             self.getNodes()
@@ -1071,7 +1078,7 @@ class Configuration( object ):
         
     def deleteJWKS( self, value ):
         """ Delete JSON Web Token Key Set from this configuration. """
-        if not type( value ) == jwks.JWKS:
+        if not type( value ) == jwks_object.JWKS:
             self._log.error( "This is not a JWKS but %s" % (type(value),) )
             return False
         if value.delete() == False:
@@ -1081,7 +1088,7 @@ class Configuration( object ):
         
     def deleteOpenAPI( self, value ):
         """ Delete OpenAPI document from this configuration. """
-        if not type( value ) == openapi.OpenAPI:
+        if not type( value ) == openapi_object.OpenAPI:
             self._log.error( "This is not a OpenAPI document but %s" % (type(value),) )
             return False
         if value.delete() == False:
@@ -1091,7 +1098,7 @@ class Configuration( object ):
         
     def deleteGraphQL( self, value ):
         """ Delete GraphQL document from this configuration. """
-        if not type( value ) == graphql.GraphQL:
+        if not type( value ) == graphql_object.GraphQL:
             self._log.error( "This is not a GraphQL document but %s" % (type(value),) )
             return False
         if value.delete() == False:
@@ -1111,7 +1118,7 @@ class Configuration( object ):
         
     def deleteICAP( self, icap_env ):
         """ Delete ICAP environment from this configuration. """
-        if not type( icap_env ) == icap.ICAP:
+        if not type( icap_env ) == icap_object.ICAP:
             self._log.error( "This is not a ICAP document but %s" % (type(icap_env),) )
             return False
         if icap_env.delete() == False:
@@ -1141,7 +1148,7 @@ class Configuration( object ):
         
     def deleteKerberos( self, krb ):
         """ Delete KerberosEnvironment from this configuration. """
-        if not type( krb ) == kerberos.Kerberos:
+        if not type( krb ) == kerberos_object.Kerberos:
             self._log.error( "This is not a KerberosEnvironment but %s" % (type(krb),) )
             return False
         if krb.delete() == False:
@@ -1183,15 +1190,15 @@ class Configuration( object ):
         self._templates = self.objects['templates']
         self._vhosts = self.objects['vhosts']
     
-    def _listSorted( self, d, key: str='id' ):
-        if not type( d ) == dict:
-            self._log.error( "Wrong object type: %s" % (type(d),) )
+    def _listSorted( self, list_of_dicts: list[dict], key: str='id' ):
+        if not type( list_of_dicts ) == dict:
+            self._log.error( "Wrong object type: %s" % (type(list_of_dicts),) )
             return []
         if key == 'name':
             func = internal.itemgetter_lc_name
         else:
             func = internal.itemgetter_id
-        return sorted( (v for v in d.items() if not v[1].isDeleted()), key=func )
+        return sorted( (v for v in list_of_dicts.values() if not v.isDeleted()), key=func )
     
     def _findByName( self, objects, name ):
         r = []

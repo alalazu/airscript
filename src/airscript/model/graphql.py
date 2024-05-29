@@ -18,16 +18,21 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
-from airscript.utils import output
+from airscript.utils import output, typename
 from airscript.model import baseObject
 from airscript.model import mapping
 
 
+TYPENAME = 'graphql-document'
+KIND = 'GraphQLDocument'
+
+typename.register( TYPENAME, KIND )
+
 class GraphQL( baseObject.BaseObject ):
     def __init__( self, parent, obj=None, id=None ):
-        self._typename = 'graphql-document'
+        self._typename = TYPENAME
         self._path = 'api-security/graphql-documents'
-        self._kind = 'GraphQLDocument'
+        self._kind = KIND
         baseObject.BaseObject.__init__( self, parent, obj=obj, id=id )
     
     """

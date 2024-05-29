@@ -19,12 +19,18 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
 from airscript.model import baseObject
+from airscript.utils import typename
 
+
+TYPENAME = 'allowed-network-endpoint'
+KIND = 'AllowedNetworkEndpoint'
+
+typename.register( TYPENAME, KIND )
 
 class NetworkEndpoint( baseObject.BaseObject ):
     def __init__( self, parent, obj=None, id=None ):
-        self._typename = 'allowed-network-endpoint'
+        self._typename = TYPENAME
         self._path = 'allowed-network-endpoints'
-        self._kind = 'AllowedNetworkEndpoint'
+        self._kind = KIND
         baseObject.BaseObject.__init__( self, parent, obj=obj, id=id )
     

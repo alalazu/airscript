@@ -16,24 +16,34 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-from typing import Any
+from typing import Any, Self
 
 class EnvValue( object ):
-    def __init__( self, value: Any ):
-        self._default = value
-        self._values = {}
+    def __init__( self, value: Any, env: Self=None ):
+        if not env:
+            self._default = value
+            self._values = {}
+        else:
+            self._default = None
+            self._values = { env: value }
+    
+    def __repr__( self ) -> str:
+        return str( self.export() )
     
     def set( self, value: Any ):
         self._default = value
     
     def add( self, env: str, value: Any ):
-        self._values[env] = value
+        if env:
+            self._values[env] = value
+        else:
+            self._default = value
     
     def get( self, env: str=None ) -> Any:
         try:
             return self._values[env]
         except KeyError:
-            return None
+            return self._default
     
     def export( self ) -> dict:
         r = { "##env##": self._default }

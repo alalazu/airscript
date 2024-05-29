@@ -18,16 +18,21 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
-from airscript.utils import output
+from airscript.utils import output, typename
 from airscript.model import baseObject, template
 from airscript.model import backendgroup, mapping, openapi, vhost
 
 
+TYPENAME = 'mapping'
+KIND = 'Mapping'
+
+typename.register( TYPENAME, KIND )
+
 class Mapping( baseObject.BaseObject ):
     def __init__( self, parent, obj=None, id=None ):
-        self._typename = 'mapping'
+        self._typename = TYPENAME
         self._path = 'mappings'
-        self._kind = 'Mapping'
+        self._kind = KIND
         baseObject.BaseObject.__init__( self, parent, obj=obj, id=id )
     
     def me( self ):

@@ -18,17 +18,22 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
-from airscript.utils import internal, output
+from airscript.utils import internal, output, typename
 from airscript.model import baseObject, mapping
 
 from typing import Union
 
+TYPENAME = 'back-end-group'
+KIND = 'BackendGroup'
+
+typename.register( TYPENAME, KIND )
+
 
 class Backendgroup( baseObject.BaseObject ):
     def __init__( self, parent, obj=None, id=None ):
-        self._typename = 'back-end-group'
+        self._typename = TYPENAME
         self._path = 'back-end-groups'
-        self._kind = 'BackendGroup'
+        self._kind = KIND
         baseObject.BaseObject.__init__( self, parent, obj=obj, id=id )
     
     def items( self ):
@@ -57,9 +62,11 @@ class Backendgroup( baseObject.BaseObject ):
 
     def loadData( self, data: dict, update: bool=False ):
         super().loadData( data, update=update )
-        self._hosts = []
+        self._hosts = {}
+        idx = 0
         for be in self.attrs['backendHosts']:
-            self._hosts.append( Backend( be ))
+            self._hosts[idx] = Backend( None, be, idx )
+            idx += 1
         del self.attrs['backendHosts']
     
     def datafy( self, attrs: dict=None, addon: dict=None ) -> str:
@@ -82,8 +89,17 @@ class Backendgroup( baseObject.BaseObject ):
         return self.relationshipDelete( mapping_object )
     
 
-class Backend( object ):
-    def __init__( self, obj: dict=None ):
+class Backend( baseObject.BaseObject ):
+    def __init__( self, parent, obj=None, id=None ):
+        try:
+            self.id = id
+        except (ValueError, TypeError):
+            self.id = id
+        self.name = None
+        self.attrs = {}
+        self.rels = {}
+        self.backlinks = {}
+        self._parent = parent
         if obj:
             self.protocol = obj['protocol']
             self.hostName = obj['hostName']
@@ -101,6 +117,13 @@ class Backend( object ):
             self.mode = 'ENABLED'
             self.spare = False
             self.weight = 100
+        self._typename = ""         # overwritten by individual object types
+        self._path = ""             # overwritten by individual object types
+        self._kind = ""             # overwritten by individual object types
+        self._deleted = False
+        self._attrs_modified = False
+        self._rels_modified = False
+        self._rels_deleted = {}
     
     def __repr__( self ):
         return f"{self.protocol}://{self.hostName}:{self.port}"

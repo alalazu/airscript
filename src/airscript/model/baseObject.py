@@ -23,6 +23,8 @@ import json
 import pprint
 import re
 
+from typing import Self
+
 from airscript.utils import cache
 from airscript.utils import internal
 from airscript.utils import output
@@ -153,6 +155,8 @@ class ReadOnlyObject( object ):
             self.id = data['id']
         except (ValueError, TypeError) as e:
             self.id = data['id']
+        except KeyError:
+            self.id = None
         self.attrs = data['attributes']
         try:
             self.name = self.attrs['name']
@@ -236,11 +240,11 @@ class ReadOnlyObject( object ):
         self._attrs_modified = True
         return True
     
-    def setName( self, value ):
+    def setName( self, value: str ):
         self.name = value
         self._attrs_modified = True
     
-    def setAttributes( self, attrs ):
+    def setAttributes( self, attrs: dict ):
         self.attrs = attrs
         self._attrs_modified = True
         try:
@@ -248,7 +252,7 @@ class ReadOnlyObject( object ):
         except KeyError:
             pass
     
-    def copyAttributes( self, obj ):
+    def copyAttributes( self, obj: Self ):
         if type( obj ) != type( self ):
             output.error( f"Type mismatch: parameter should be '{type(self)}' but is '{type(obj)}'" )
             return False
@@ -259,7 +263,7 @@ class ReadOnlyObject( object ):
         self._attrs_modified = True
         return True
     
-    def copyAttributeKeys( self, obj ):
+    def copyAttributeKeys( self, obj: Self ):
         if type( obj ) != type( self ):
             output.error( f"Type mismatch: parameter should be '{type(self)}' but is '{type(obj)}'" )
             return False
@@ -270,7 +274,7 @@ class ReadOnlyObject( object ):
         self._attrs_modified = True
         return True
     
-    def copyRelationships( self, obj ):
+    def copyRelationships( self, obj: Self ):
         if type( obj ) != type( self ):
             output.error( f"Type mismatch: parameter should be '{type(self)}' but is '{type(obj)}'" )
             return False
@@ -281,7 +285,7 @@ class ReadOnlyObject( object ):
         self._rels_modified = True
         return True
     
-    def addRel( self, reference, load: bool=False, backlink: bool=False ):
+    def addRel( self, reference: Self, load: bool=False, backlink: bool=False ):
         v = Relationship( reference, load )
         type_name = reference.getTypeName()
         if self._typename == reference._typename and backlink:
@@ -296,7 +300,7 @@ class ReadOnlyObject( object ):
                 self.rels[type_name] = [ v ]
             self._rels_modified = True
 
-    def deleteRel( self, reference, removeBacklink: bool=True, markOnly: bool=True ) -> bool:
+    def deleteRel( self, reference: Self, removeBacklink: bool=True, markOnly: bool=True ) -> bool:
         rel = self._findRel( reference )
         if rel == None:
             return False
@@ -309,7 +313,7 @@ class ReadOnlyObject( object ):
             reference.deleteRel( self, removeBacklink=False, markOnly=markOnly )
         return True
     
-    def checkRel( self, reference ) -> bool:
+    def checkRel( self, reference: Self ) -> bool:
         rel = self._findRel( reference )
         if rel == None:
             return False
@@ -451,39 +455,9 @@ class ReadOnlyObject( object ):
     def _addRel( self, item ):
         type_name = item['type']
         backlink = True
-        if type_name == "api-policy-service":
-            obj = self._parent.addAPIPolicy( id=item['id'] )
-        elif type_name == "back-end-group":
-            obj = self._parent.addBackendGroup( id=item['id'] )
-        elif type_name == "ssl-certificate":
-            obj = self._parent.addCertificate( id=item['id'] )
-        elif type_name == "graphql-document":
-            obj = self._parent.addGraphQL( id=item['id'] )
-        elif type_name == "host":
-            obj = self._parent.addHostName( id=item['id'] )
-        elif type_name == "icap-environment":
-            obj = self._parent.addICAP( id=item['id'] )
-        elif type_name == "ip-address-list":
-            obj = self._parent.addIPList( id=item['id'] )
-        elif type_name == "local-json-web-key-set":
-            obj = self._parent.addJWKS( id=item['id'], remote=False )
-        elif type_name == "remote-json-web-key-set":
-            obj = self._parent.addJWKS( id=item['id'], renmote=True )
-        elif type_name == "kerberos-environment":
-            obj = self._parent.addKerberos( id=item['id'] )
-        elif type_name == "mapping":
-            obj = self._parent.addMapping( id=item['id'] )
-        elif type_name == "allowed-network-endpoint":
-            obj = self._parent.addNetworkEndpoint( id=item['id'] )
-        elif type_name == "node":
-            obj = self._parent.addNode( id=item['id'] )
-        elif type_name == "openapi-document":
-            obj = self._parent.addOpenAPI( id=item['id'] )
-        elif type_name == "mapping-template":
-            obj = self._parent.addTemplate( id=item['id'] )
+        obj = self._parent.addElement( type_name, id=item['id'] )
+        if type_name == "mapping-template":
             backlink = False
-        elif type_name == "virtual-host":
-            obj = self._parent.addVHost( id=item['id'] )
         if backlink:
             obj.addRel( self, backlink=True )
         self.addRel( obj )

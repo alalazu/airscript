@@ -19,13 +19,19 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
 from airscript.model import baseObject
+from airscript.utils import typename
 
+
+TYPENAME = 'mapping-template'
+KIND = 'MappingTemplate'
+
+typename.register( TYPENAME, KIND )
 
 class Template( baseObject.ReadOnlyObject ):
     def __init__( self, parent, obj=None, id=None ):
-        self._typename = 'mapping-template'
+        self._typename = TYPENAME
         self._path = 'templates/mappings'
-        self._kind = 'MappingTemplate'
+        self._kind = KIND
         baseObject.ReadOnlyObject.__init__( self, parent, obj=obj, id=id )
     
     def __repr__( self ):

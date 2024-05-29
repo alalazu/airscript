@@ -18,19 +18,24 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
-from airscript.model import baseObject
-from airscript.utils import typename
+typename2kind = {}
+kind2typename = {}
 
+def register( typename: str, kind: str ):
+    global typename2kind, kind2typename
+    typename2kind[typename] = kind
+    kind2typename[kind] = typename
 
-TYPENAME = 'icap-environment'
-KIND = 'ICAPEnvironment'
+def getKind( typename: str ) -> str:
+    global typename2kind
+    try:
+        return typename2kind[typename]
+    except KeyError:
+        return None
 
-typename.register( TYPENAME, KIND )
-
-class ICAP( baseObject.BaseObject ):
-    def __init__( self, parent, obj=None, id=None ):
-        self._typename = TYPENAME
-        self._path = 'icap-environments'
-        self._kind = KIND
-        baseObject.BaseObject.__init__( self, parent, obj=obj, id=id )
-    
+def getTypename( kind: str ) -> str:
+    global kind2typename
+    try:
+        return kind2typename[kind]
+    except KeyError:
+        return None

@@ -21,27 +21,105 @@ from typing import Self
 from airscript.declarative import changelog, defaults, envvalue
 from airscript.model import baseObject
 
-re_marker = None
+from pprint import pprint as pp
 
 
-def create_key( item: baseObject.ReadOnlyObject ):
-    return "{}:{}".format( item.getKind(), item.getName() )
+def create_key( base_object: baseObject.ReadOnlyObject=None, yaml_dict: dict=None, param_set: set=None ):
+    if base_object:
+        return "{}:{}".format( base_object.getKind(), base_object.getName() )
+    elif yaml_dict:
+        return "{}:{}".format( yaml_dict['kind'], yaml_dict['metadata']['name'] )
+    else:
+        return "{}:{}".format( param_set[0], param_set[1] )
 
 
 class Doc( object ):
-    def __init__( self, item: baseObject.ReadOnlyObject, env: str=None ):
-        self._item = item
-        self._kind = item.getKind()
-        self._name = item.name
-        self._environments = [ env ] if env != None else None
-        self._connections = { env if env else "default": item.listRelWithKind() }
-        self._changelog = changelog.ChangeLog
-        self.key = create_key( item )
-        self._spec = self._copyNonDefaults( item.getAttrs(), defaults.get( self._kind ))
+    def __init__( self, id: str=None, base_object: baseObject.ReadOnlyObject=None, yaml_dict: dict=None, env: str=None ):
+        self.id = id
+        self._base_object = base_object
+        if base_object:
+            self._kind = base_object.getKind()
+            self._name = base_object.name
+            self._connections = { env if env else "default": base_object.listRelWithKind() }
+            self._environments = [ env ] if env != None else None
+            self.key = create_key( base_object=base_object )
+            self._spec = self._copyNonDefaults( base_object.getAttrs(), defaults.get( self._kind ))
+        else:
+            self._kind = yaml_dict['kind']
+            self._name = yaml_dict['metadata']['name']
+            self._spec = self._loadYAML( yaml_dict['spec'] )
+            pp( {"1": yaml_dict['connections']} )
+            if env:
+                try:
+                    base  = yaml_dict['connections']['default']
+                except KeyError:
+                    base = {}
+                try:
+                    ovrl = yaml_dict['connections'][env]
+                except KeyError:
+                    ovrl = {}
+                for k,v in base.items():
+                    if not k in ovrl:
+                        ovrl[k] = v
+                self._connections = { env: ovrl }
+                """
+                try:
+                    connections = yaml_dict['connections']['default']
+                except KeyError:
+                    connections = []
+                try:
+                    connections = set( connections + yaml_dict['connections'][env])
+                except KeyError:
+                    pass
+                self._connections = { env: list( connections ) }
+                """
+                self._spec = self._reduce2Env( self._spec, env )
+            else:
+                self._connections = yaml_dict['connections']
+            pp( {"2": self._connections} )
+            try:
+                self._environments = yaml_dict['metadata']['environments']
+            except KeyError:
+                self._environments = None
+            self.key = create_key( yaml_dict=yaml_dict )
+        self._changelog = changelog.ChangeLog()
         try:
             del self._spec['name']
         except KeyError:
             pass
+    
+    def getKind( self ) -> str:
+        return self._kind
+    
+    def isInEnv( self, env: str ) -> bool:
+        if env == None or self._environments == None or env in self._environments:
+            return True
+        return False
+    
+    def isConnected( self, env: str=None ) -> bool:
+        try:
+            if len( self._connections['default'] ) > 0:
+                return True
+        except KeyError:
+            pass
+        if env:
+            try:
+                if len( self._connections[env] ) > 0:
+                    return True
+            except KeyError:
+                pass
+        return False
+
+    def getSpec( self ) -> dict:
+        r = self._overwriteValues( defaults.get( self._kind ), self._spec )
+        r['name'] = self._name
+        return r
+    
+    def getConnections( self, env: str=None ) -> dict:
+        try:
+            return self._connections[env]
+        except KeyError:
+            return self._connections[env][list( self._connections[env].keys() )[0]]
     
     def export( self ) -> dict:
         r =  {
@@ -58,26 +136,34 @@ class Doc( object ):
         return r
     
     def update( self, doc: Self, env: str=None ):
-        if not env in self._environments:
-            self._environments.append( env )
+        if env:
+            if self._environments:
+                if not env in self._environments:
+                    self._environments.append( env )
+            else:
+                self._environments = [ env ]
             self._changelog.add( f"metadata.environments", env )
-        self._connections[env] = doc._item.listRelWithKind()
-        self._changelog.replace( f"metadata.connections", self._connections[env] )
-        self._updateValues( self._spec, doc, defaults.get( self._kind ), "", env )
+        else:
+            env = "default"
+        self._connections[env] = doc._base_object.listRelWithKind()
+        self._changelog.replace( "metadata.connections", self._connections[env] )
+        self._updateValues( self._spec, doc._spec, defaults.get( self._kind ), "", env )
 
+    def connectionsReduce2Env( self, env: str, lookup: dict ) -> bool:
+        removed = False
+        for type_name, lst in self._connections[env].items():
+            tbd = []
+            for ref in lst:
+                if not f"{type_name}:{ref}" in lookup:
+                    tbd.append( ref )
+                    removed = True
+            self._connections[env][type_name] = list( set(self._connections[env][type_name]) - set(tbd) )
+        return removed
+    
     def _hasTemplateMarker( self, txt: str ) -> bool:
         if txt == None:
             return False
         return r"${" in txt
-        """
-        global re_marker
-
-        if txt == None:
-            return False
-        if re_marker == None:
-            re_marker = re.compile( r".*\${.*" )
-        return re_marker.match( txt )
-        """
 
     def _updateValues( self, target: dict, source: dict, defaults: dict, path: str, env: str=None ):
         for key, value in source.items():
@@ -98,7 +184,7 @@ class Doc( object ):
             if not env:
                 # no environment defined for config
                 # set new default value, unless previous value has template marker
-                if isinstance( target[key], envvalue.envValue ):
+                if isinstance( target[key], envvalue.EnvValue ):
                     original = target[key].get()
                     if not self._hasTemplateMarker( original ):
                         self._changelog.update( f"{path}.{key}", original, value )
@@ -109,7 +195,7 @@ class Doc( object ):
             else:
                 # environment-specific config
                 # set environment value, unless previous value has template marker
-                if isinstance( target[key], envvalue.envValue ):
+                if isinstance( target[key], envvalue.EnvValue ):
                     original = target[key].get( env=env )
                     if not self._hasTemplateMarker( original ):
                         self._changelog.update( f"{path}.{key}", original, value )
@@ -130,7 +216,7 @@ class Doc( object ):
                 value = self._copyNonDefaults( value, defaults_subdict )
                 if value == {}:
                     continue
-            if isinstance( value, list ):
+            elif isinstance( value, list ):
                 lst = []
                 try:
                     defaults_subdict = defaults[key]
@@ -156,5 +242,127 @@ class Doc( object ):
             except KeyError:
                 pass
             r[key] = value
+        return r
+
+    def _overwriteValues( self, base: dict, overlay: dict ) -> dict:
+        r = {}
+        for key, value in base.items():
+            if isinstance( value, dict ):
+                try:
+                    new_value = self._overwriteValues( value, overlay[key] )
+                except KeyError:
+                    # no values to overwrite, keep base as is
+                    new_value = value
+            elif isinstance( value, list ):
+                try:
+                    lst = overlay[key]
+                    value_list = []
+                except KeyError:
+                    # no values to overwrite, keep base as is
+                    lst = []
+                    value_list = value
+                for entry in lst:
+                    if isinstance( entry, dict ):
+                        try:
+                            default_values = value[0]
+                        except IndexError:
+                            default_values = {}
+                        value_list.append ( self._overwriteValues( default_values, entry ))
+                new_value = value_list
+            else:
+                try:
+                    new_value = overlay[key]
+                except KeyError:
+                    new_value = value
+            r[key] = new_value
+        for key, value in overlay.items():
+            if not key in r:
+                r[key] = value
+        return r
+
+    def _extractEnvValues( self, source: dict, env: str ) -> dict:
+        r = {}
+        for key, value in source.items():
+            if isinstance( value, envvalue.EnvValue ):
+                if key[0:7] == "##env##":
+                        if key[7:] != env:
+                            continue
+                        pass
+            elif isinstance( value, dict ):
+                r[key] = self._extractEnvValues( value, env )
+            elif isinstance( value, list ):
+                r[key] = []
+                for entry in value:
+                    if isinstance( entry, dict ):
+                        try:
+                            tmp = value[0]
+                        except IndexError:
+                            tmp = {}
+                        r[key].append( self._extractEnvValues( tmp, env ))
+                    else:
+                        r[key].append( entry )
+            else:
+                r[key] = value
+        return r
+    
+    def _loadYAML( self, data: dict ) -> dict:
+        r = {}
+        for key, value in data.items():
+            if isinstance( value, dict ):
+                if "##env##" in value:
+                    r[key] = self._loadEnvValue( value )
+                else:
+                    r[key] = self._loadYAML( value )
+            elif isinstance( value, list ):
+                r[key] = []
+                for entry in value:
+                    if isinstance( entry, dict ):
+                        if "##env##" in entry:
+                            r[key].append( self._loadEnvValue( entry ))
+                        else:
+                            r[key].append( self._loadYAML( entry ))
+                    else:
+                        r[key].append( entry )
+            else:
+                r[key] = value
+        return r
+    
+    def _loadEnvValue( self, data: dict ) -> envvalue.EnvValue:
+        r = None
+        for key, value in data.items():
+            if isinstance( value, dict ):
+                env_value = self._loadYAML( value )
+            elif isinstance( value, list ):
+                env_value = []
+                for entry in value:
+                    if isinstance( entry, dict ):
+                        env_value.append( self._loadYAML( entry ))
+                    else:
+                        env_value.append( entry )
+            else:
+                env_value = value
+            env = key[7:] if key != "##env##" else None
+            if r == None:
+                r = envvalue.EnvValue( env_value, env=env )
+            else:
+                r.add( env, env_value )
+        return r
+    
+    def _reduce2Env( self, data: dict, env: str ) -> dict:
+        r = {}
+        for key, value in data.items():
+            if isinstance( value, envvalue.EnvValue ):
+                r[key] = value.get( env )
+            elif isinstance( value, dict ):
+                r[key] = self._reduce2Env( value, env )
+            elif isinstance( value, list ):
+                r[key] = []
+                for entry in value:
+                    if isinstance( entry, dict ):
+                        r[key].append( self._reduce2Env( entry, env ))
+                    else:
+                        r[key].append( entry )
+            else:
+                r[key] = value
         return r
 

@@ -19,12 +19,18 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
 from airscript.model import baseObject
+from airscript.utils import typename
 
+
+TYPENAME = 'host'
+KIND = 'Host'
+
+typename.register( TYPENAME, KIND )
 
 class Host( baseObject.BaseObject ):
     def __init__( self, parent, obj=None, id=None ):
-        self._typename = 'host'
+        self._typename = TYPENAME
         self._path = 'hosts'
-        self._kind = 'Host'
+        self._kind = KIND
         baseObject.BaseObject.__init__( self, parent, obj=obj, id=id )
     

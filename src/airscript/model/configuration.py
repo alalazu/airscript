@@ -93,8 +93,9 @@ class Configuration( object ):
             self.id = 'new'
             self.comment = ''
             self.type = 'NEW'
-            self.timestamp = datetime.datetime.now()
-            self.createdAt = datetime.datetime.strftime( self.timestamp, datetime.datetime.isoformat )
+            now = datetime.datetime.now()
+            self.timestamp = now.timestamp()
+            self.createdAt = now.strftime("%Y-%m-%d %H:%M:%S")
         self.conn = conn
         self._airscript_config = airscript_config
         self._loaded = False
@@ -370,6 +371,41 @@ class Configuration( object ):
 
     def templates( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
         return internal.itemList( self._templates, id=id, name=name, ids=ids, filter=filter, sort=sort )
+
+    def addElement( self, type_name: str, id: str=None, data: dict=None ):
+        if type_name in ["api-policy-service", "APIPolicyService"]:
+            obj = self.addAPIPolicy( id=id, data=data )
+        elif type_name in ["back-end-group", "BackendGroup"]:
+            obj = self.addBackendGroup( id=id, data=data )
+        elif type_name in ["ssl-certificate", "TLSCertificate"]:
+            obj = self.addCertificate( id=id, data=data )
+        elif type_name in ["graphql-document", "GraphQLDocument"]:
+            obj = self.addGraphQL( id=id, data=data )
+        elif type_name in ["host", "Host"]:
+            obj = self.addHostName( id=id, data=data )
+        elif type_name in ["icap-environment", "ICAPEnvironment"]:
+            obj = self.addICAP( id=id, data=data )
+        elif type_name in ["ip-address-list", "IPList"]:
+            obj = self.addIPList( id=id, data=data )
+        elif type_name in ["local-json-web-key-set", "JWKSLocal"]:
+            obj = self.addJWKS( id=id, data=data, remote=False )
+        elif type_name in ["remote-json-web-key-set", "JWKSRemote"]:
+            obj = self.addJWKS( id=id, data=data, renmote=True )
+        elif type_name in ["kerberos-environment", "KerberosEnvironment"]:
+            obj = self.addKerberos( id=id, data=data )
+        elif type_name in ["mapping", "Mapping"]:
+            obj = self.addMapping( id=id, data=data )
+        elif type_name in ["allowed-network-endpoint", "AllowedNetworkEndpoint"]:
+            obj = self.addNetworkEndpoint( id=id, data=data )
+        elif type_name in ["node", "GatewayClusterNode"]:
+            obj = self.addNode( id=id, data=data )
+        elif type_name in ["openapi-document", "OpenAPIDocument"]:
+            obj = self.addOpenAPI( id=id, data=data )
+        elif type_name in ["mapping-template", "MappingTemplate"]:
+            obj = self.addTemplate( id=id, data=data )
+        elif type_name in ["virtual-host", "VirtualHost"]:
+            obj = self.addVHost( id=id, data=data )
+        return obj
 
     def addNode( self, id: str=None, data: dict=None ):
         if id in self._nodes:

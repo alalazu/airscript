@@ -36,7 +36,7 @@ class Certificate( baseObject.BaseObject ):
     
     def loadData( self, data: dict, update: bool=False ):
         baseObject.BaseObject.loadData( self, data=data, update=update )
-        if self._parent.conn.getVersion() >= 7.6:
+        if self._parent.conn == None or self._parent.conn.getVersion() >= 7.6:
             attr_name = "certificate"
         else:
             attr_name = "serverCertificate"

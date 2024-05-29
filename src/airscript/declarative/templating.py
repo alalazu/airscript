@@ -16,22 +16,26 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-from typing import Any
+from mako.template import Template
+from mako import exceptions
 
-class ChangeLog( object ):
-    def __init__( self ):
-        self._entries = []
-    
-    def update( self, key: str, old: Any, new: Any ):
-        if old != new:
-            self._entries.append({'op': 'upd', 'key': key, 'old': old, 'new': new })
-    
-    def add( self, key: str, new: Any ):
-        self._entries.append({'op': 'add', 'key': key, 'new': new })
-    
-    def replace( self, key: str, new: Any ):
-        self._entries.append({'op': 'rpl', 'key': key, 'new': new })
-    
-    def get( self ):
-        return self._entries
+from pyAirlock.common import config
+
+
+class TemplateHandler( object ):
+    def __init__( self, cfg: config.Config, raw=False ):
+        self._airscript_module_dir = cfg.get( 'declarative.templating-module-dir', 'templates/modules' )
+        self._raw = raw
+        self._params = {}
+
+    ''' render template '''
+    def render( self, fname ):
+        template = Template( filename=fname, module_directory=self._airscript_module_dir )
+        if self._raw:
+            return template.source
+        try:
+            return template.render( **self._params )
+        except:
+            print( exceptions.html_error_template().render() )
+            return ""
     

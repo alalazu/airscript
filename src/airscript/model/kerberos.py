@@ -18,15 +18,20 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
-from airscript.utils import output
+from airscript.utils import output, typename
 from airscript.model import baseObject, backendgroup
 
 
+TYPENAME = 'kerberos-environment'
+KIND = 'KerberosEnvironment'
+
+typename.register( TYPENAME, KIND )
+
 class Kerberos( baseObject.BaseObject ):
     def __init__( self, parent, obj=None, id=None ):
-        self._typename = 'kerberos-environment'
+        self._typename = TYPENAME
         self._path = 'kerberos-environments'
-        self._kind = 'KerberosEnvironment'
+        self._kind = KIND
         baseObject.BaseObject.__init__( self, parent, obj=obj, id=id )
     
     """

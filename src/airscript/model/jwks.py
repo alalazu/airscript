@@ -18,22 +18,30 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
-from airscript.utils import output
+from airscript.utils import output, typename
 from airscript.model import baseObject
 from airscript.model import mapping
 
+
+REMOTE_TYPENAME = 'remote-json-web-key-set'
+REMOTE_KIND = 'JWKSRemote'
+LOCAL_TYPENAME = 'local-json-web-key-set'
+LOCAL_KIND = 'JWKSLocal'
+
+typename.register( REMOTE_TYPENAME, REMOTE_KIND )
+typename.register( LOCAL_TYPENAME, LOCAL_KIND )
 
 class JWKS( baseObject.BaseObject ):
     def __init__( self, parent, obj=None, id=None, remote=True ):
         self._remote = remote
         if remote:
-            self._typename = 'remote-json-web-key-set'
+            self._typename = REMOTE_TYPENAME
             self._path = 'json-web-key-sets/remotes'
-            self._kind = 'JWKSRemote'
+            self._kind = REMOTE_KIND
         else:
-            self._typename = 'local-json-web-key-set'
+            self._typename = LOCAL_TYPENAME
             self._path = 'json-web-key-sets/locals'
-            self._kind = 'JWKSLocal'
+            self._kind = LOCAL_KIND
         baseObject.BaseObject.__init__( self, parent, obj=obj, id=id )
     
     def me( self ):

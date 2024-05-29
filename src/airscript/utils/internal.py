@@ -74,7 +74,7 @@ def collectKeyNames( dictionary, path="", level=1 ):
                 lst.append( key )
     return lst
 
-def itemList( objects, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
+def itemList( objects: dict, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
     """
     Get list of objects
     - name: regexp of name(s) to match

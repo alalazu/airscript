@@ -103,6 +103,16 @@ class Gateway( object ):
         """
         return self._conn.setTLSVerify( verify )
     
+    def isActive( self ) -> bool:
+        """
+        Check if Airlock Gateway is active node in an active/passive cluster
+        
+        Returns:
+        * True if node is active or if node is not in an active/passive cluster
+        * False if node is the passive partner
+        """
+        return self._conn.isActive()
+    
     def connect( self ) -> bool:
         """ Establish session with Airlock Gateway. """
         try:
@@ -195,3 +205,24 @@ class Gateway( object ):
         except KeyError:
             self._log.error( "No such configuration" )
         return True
+    
+    def status( self ) -> dict:
+        """
+        Retrieve node status
+
+        Returns: dict according to [API documentation](https://docs.airlock.com/gateway/latest/rest-api/config-rest-api.html#get-node-status)
+        """
+        return self._conn.status()
+
+    def failoverState( self ):
+        """
+        Retrieve failover state
+        
+        Returns:
+        * active
+        * passive
+        * standalone
+        * offline
+        """
+        return self._conn.failoverState()
+    

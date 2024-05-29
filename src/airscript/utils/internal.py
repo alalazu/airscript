@@ -108,7 +108,12 @@ def itemList( objects: dict, id: Union[str|int]=None, name: str=None, ids: list[
             func = itemgetter_lc_name
         else:
             func = itemgetter_id
-        return sorted( (v for v in result.items() if not v[1].isDeleted()), key=func )
+        # return sorted( (v for v in result.items() if not v[1].isDeleted()), key=func )
+        r = {}
+        s = sorted( (v for v in result.values() if not v.isDeleted()), key=func )
+        for entry in s:
+            r[entry.id] = entry
+        return r
     else:
         return result
 

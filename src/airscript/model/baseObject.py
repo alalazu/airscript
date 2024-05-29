@@ -33,8 +33,8 @@ from airscript.utils import output
 class ReadOnlyObject( object ):
     def __init__( self, parent, obj=None, id=None ):
         try:
-            #self.id = int( id )
-            self.id = id
+            self.id = int( id )
+            # self.id = id
         except (ValueError, TypeError):
             self.id = id
         self.name = None
@@ -151,8 +151,8 @@ class ReadOnlyObject( object ):
         if self.attrs != {}:
             self._attrs_modified = True
         try:
-            #self.id = int( data['id'] )
-            self.id = data['id']
+            self.id = int( data['id'] )
+            # self.id = data['id']
         except (ValueError, TypeError) as e:
             self.id = data['id']
         except KeyError:

@@ -84,7 +84,7 @@ def itemList( objects: dict, id: Union[str|int]=None, name: str=None, ids: list[
     Returns dict of dicts
     """
     if name:
-        re_name = re.compile( name )
+        re_name = re.compile( f"^{name}$" )
     if id:
         try:
             ids.append( id )

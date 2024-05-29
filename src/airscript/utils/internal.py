@@ -22,47 +22,47 @@ import re
 from operator import attrgetter, itemgetter
 from typing import Union
 
-def itemgetter_lc_0( obj ):
+def itemgetter_lc_0( obj ) -> str:
     """
     Return lowercased operator.itemgetter() keys
     """
     x = str( itemgetter(0)(obj) )
     return x.lower()
 
-def itemgetter_lc_1( obj ):
+def itemgetter_lc_1( obj ) -> str:
     """
     Return lowercased operator.itemgetter() keys
     """
     x = str( itemgetter(1)(obj) )
     return x.lower()
 
-def itemgetter_lc_id( obj ):
+def itemgetter_lc_id( obj ) -> str:
     """
     Return lowercased id
     """
-    x = str( attrgetter('id')(obj[1]) )
+    x = str( attrgetter('id')(obj) )
     return x.lower()
 
-def itemgetter_lc_name( obj ):
+def itemgetter_lc_name( obj ) -> str:
     """
     Return lowercased name
     """
-    x = str( attrgetter('name')(obj[1]) )
+    x = str( attrgetter('name')(obj) )
     return x.lower()
 
-def itemgetter_id( obj ):
+def itemgetter_id( obj ) -> int:
     """
     Return operator.itemgetter() keys as integer
     """
     return int( itemgetter(0)(obj) )
 
-def itemgetter_nr_1( obj ):
+def itemgetter_nr_1( obj ) -> int:
     """
     Return operator.itemgetter() keys as integer
     """
     return int( itemgetter(1)(obj) )
 
-def collectKeyNames( dictionary, path="", level=1 ):
+def collectKeyNames( dictionary, path="", level=1 ) -> list[str|int]:
     lst = []
     for key, value in dictionary.items():
         if type( value ) is dict:

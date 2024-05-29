@@ -119,7 +119,7 @@ class Doc( object ):
         #     # for name in self._parents:
         #     #     doc = self._dconfig.findDoc( self._kind, name )
         #     #     base = self._inheritSpec( base, doc )
-        # r = self._overwriteValues( base, self._spec )
+        r = self._overwriteValues( r, self._spec )
         r['name'] = self._name
         return r
     
@@ -393,10 +393,9 @@ class Doc( object ):
         return r
 
     def _inheritSpec( self, base, doc: Self ) -> dict:
-        if doc._parents == None or doc._parents == []:
-            return self._overwriteValues( base, doc._spec )
-        for name in doc._parents:
-            parent_doc = self._dconfig.findDoc( self._kind, name )
-            base = self._inheritSpec( base, parent_doc )
-        return self._overwriteValues( base, self._spec )
+        if doc._parents != None and doc._parents != []:
+            for name in doc._parents:
+                parent_doc = self._dconfig.findDoc( self._kind, name )
+                base = self._inheritSpec( base, parent_doc )
+        return self._overwriteValues( base, doc._spec )
     

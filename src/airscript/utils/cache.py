@@ -49,8 +49,12 @@ def cacheAttributeKeys( gateway_name, typename, keyList ):
                 _cachedAttributeKeyNames.append( key )
         if not key in _cachedAttributeKeysMap.keys():
             _cachedAttributeKeysMap[key] = { gateway_name: [typename] }
-        elif not typename in _cachedAttributeKeysMap[key][gateway_name]:
-            _cachedAttributeKeysMap[key][gateway_name].append( typename )
+        else:
+            try:
+                if not typename in _cachedAttributeKeysMap[key][gateway_name]:
+                    _cachedAttributeKeysMap[key][gateway_name].append( typename )
+            except KeyError:
+                _cachedAttributeKeysMap[key][gateway_name] = [typename]
     entry = _getCacheGatewayEntry( gateway_name )
     if entry == None:
         entry = {}

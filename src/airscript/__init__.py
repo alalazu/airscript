@@ -86,8 +86,11 @@ it works, e.g. the requirements for loading and activating a configuration.
 
 import os
 
+from pprint import pprint
+from typing import Any
+
 import airscript.commands
-from airscript.model import gateway
+from airscript.model import configuration, gateway
 from airscript.utils import runinfo
 from pyAirlock.common import config, exception, log, utils
 
@@ -99,7 +102,7 @@ mgmt_server = None
 """
 User helper functions
 """
-def gwLoad( fname: str=None, run_info=None ):
+def gwLoad( fname: str=None, run_info: runinfo.RunInfo=None ):
     """
     Load Airlock Gateway definitions and return array indexed by Gateway names.
     
@@ -196,57 +199,62 @@ def gwLoad( fname: str=None, run_info=None ):
         out.verbose( f"  gws['{gw}'] @ {gws[gw].getHost()}" )
     return gws
 
+def pp( obj: Any ):
+    pprint( obj, sort_dicts=False )
 
-def listConfigs( gw ):
+def ppsort( obj: Any ):
+    pprint( obj )
+
+def listConfigs( gw: gateway.Gateway ):
     airscript.commands.listConfigs( gw )
 
-def listVHosts( cfg, paths=None ):
+def listVHosts( cfg: configuration.Configuration, paths=None ):
     airscript.commands.listVHosts( cfg, paths=paths )
 
-def listMappings( cfg, paths=None ):
+def listMappings( cfg: configuration.Configuration, paths=None ):
     airscript.commands.listMappings( cfg, paths=paths )
 
-def listBackendgroups( cfg, paths=None ):
+def listBackendgroups( cfg: configuration.Configuration, paths=None ):
     airscript.commands.listBackendgroups( cfg, paths=paths )
 
-def listCertificates( cfg, paths=None ):
+def listCertificates( cfg: configuration.Configuration, paths=None ):
     airscript.commands.listCertificates( cfg, paths=paths )
 
-def listOpenAPI( cfg, paths=None ):
+def listOpenAPI( cfg: configuration.Configuration, paths=None ):
     airscript.commands.listOpenAPI( cfg, paths=paths )
 
-def listGraphQL( cfg, paths=None ):
+def listGraphQL( cfg: configuration.Configuration, paths=None ):
     airscript.commands.listGraphQL( cfg, paths=paths )
 
-def listJWKS( cfg, paths=None ):
+def listJWKS( cfg: configuration.Configuration, paths=None ):
     airscript.commands.listJWKS( cfg, paths=paths )
 
-def listKerberos( cfg, paths=None ):
+def listKerberos( cfg: configuration.Configuration, paths=None ):
     airscript.commands.listKerberos( cfg, paths=paths )
 
-def listNetworkEndpoints( cfg, paths=None ):
+def listNetworkEndpoints( cfg: configuration.Configuration, paths=None ):
     airscript.commands.listNetworkEndpoints( cfg, paths=paths )
 
-def listNodes( cfg, paths=None ):
+def listNodes( cfg: configuration.Configuration, paths=None ):
     airscript.commands.listNodes( cfg, paths=paths )
 
-def listAPIPolicies( cfg, paths=None ):
+def listAPIPolicies( cfg: configuration.Configuration, paths=None ):
     airscript.commands.listAPIPolicies( cfg, paths=paths )
 
-def listHostNames( cfg, paths=None ):
+def listHostNames( cfg: configuration.Configuration, paths=None ):
     airscript.commands.listHostNames( cfg, paths=paths )
 
-def listIPLists( cfg, paths=None ):
+def listIPLists( cfg: configuration.Configuration, paths=None ):
     airscript.commands.listIPLists( cfg, paths=paths )
 
-def listTemplates( cfg, paths=None ):
+def listTemplates( cfg: configuration.Configuration, paths=None ):
     airscript.commands.listTemplates( cfg, paths=paths )
 
-def listCfgInfo( cfg, order="NVMBCHOGJIAKT" ):
+def listCfgInfo( cfg: configuration.Configuration, order="NVMBCHOGJIAKT" ):
     airscript.commands.listCfgInfo( cfg, order=order )
 
-def validator( cfg, selection: list[str]=['error','warning','info'], width: int=-1 ):
+def validator( cfg: configuration.Configuration, selection: list[str]=['error','warning','info'], width: int=-1 ):
     airscript.commands.validator( cfg, selection, width=width )
 
-def export( cfg, fname: str ):
+def export( cfg: configuration.Configuration, fname: str ):
     airscript.commands.export( cfg, fname )

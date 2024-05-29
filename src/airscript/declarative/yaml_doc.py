@@ -89,6 +89,9 @@ class Doc( object ):
     def getKind( self ) -> str:
         return self._kind
     
+    def getName( self ) -> str:
+        return self._name
+    
     def isInEnv( self, env: str ) -> bool:
         if env == None or self._environments == None or env in self._environments:
             return True
@@ -119,14 +122,6 @@ class Doc( object ):
         # r = self._overwriteValues( base, self._spec )
         r['name'] = self._name
         return r
-    
-    def _inheritSpec( self, base, doc: Self ) -> dict:
-        if doc._parents == None or doc._parents == []:
-            return self._overwriteValues( base, doc._spec )
-        for name in doc._parents:
-            parent_doc = self._dconfig.findDoc( self._kind, name )
-            base = self._inheritSpec( base, parent_doc )
-        return self._overwriteValues( base, self._spec )
     
     def getConnections( self, env: str=None ) -> dict:
         try:
@@ -175,6 +170,15 @@ class Doc( object ):
                     removed = True
             self._connections[env][type_name] = list( set(self._connections[env][type_name]) - set(tbd) )
         return removed
+    
+    def inheritanceTree( self, doc: Self ) -> dict:
+        if doc._parents == None or doc._parents == []:
+            return {}
+        r = {}
+        for name in doc._parents:
+            parent_doc = self._dconfig.findDoc( self._kind, name )
+            r[name] = self.inheritanceTree( parent_doc )
+        return r
     
     def _hasTemplateMarker( self, txt: str ) -> bool:
         if txt == None:
@@ -388,3 +392,11 @@ class Doc( object ):
                 r[key] = value
         return r
 
+    def _inheritSpec( self, base, doc: Self ) -> dict:
+        if doc._parents == None or doc._parents == []:
+            return self._overwriteValues( base, doc._spec )
+        for name in doc._parents:
+            parent_doc = self._dconfig.findDoc( self._kind, name )
+            base = self._inheritSpec( base, parent_doc )
+        return self._overwriteValues( base, self._spec )
+    

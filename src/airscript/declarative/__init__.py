@@ -62,36 +62,6 @@ class DConfig( object ):
         self._env = env
         self._loaded = "raw" if raw else "config"
     
-    def findDoc( self, kind: str, name: str ) -> yaml_doc.Doc:
-        key = yaml_doc.create_key( param_set=(kind, name) )
-        try:
-            return self._map[key][1]
-        except KeyError:
-            return None
-
-    def _load_org( self ):
-        if not os.path.isdir( self._dirname ):
-            return
-        self._map = {}
-        self._docs = { None: {} }
-        for fname in glob.glob( "*.yaml", root_dir=self._dirname ):
-            if fname != self._export_file:
-                self._docs[fname] = {}
-            with open( os.path.join( self._dirname, fname ), "r" ) as fp:
-                if fname == self._export_file:
-                    fname = None
-                try:
-                    for doc in yaml.safe_load_all( fp ):
-                        if not doc:
-                            continue
-                        key = yaml_doc.create_key( yaml_dict=doc )
-                        self._map[key] = (fname, doc)
-                        self._docs[fname][key] = yaml_doc.Doc( yaml_dict=doc, dconfig=self )
-                except yaml.scanner.ScannerError:
-                    # probably templating code - just ignore the file
-                    # upon merge & save, the documents defined in this file will be exported to 'declarative.export-file'
-                    pass
-
     def loadRaw( self ):
         return self.load( raw=True )
 
@@ -196,6 +166,21 @@ class DConfig( object ):
         for item in cfg.networkendpoints().values():
             self._docMerge( item, env )
 
+    def findDoc( self, kind: str, name: str ) -> yaml_doc.Doc:
+        key = yaml_doc.create_key( param_set=(kind, name) )
+        try:
+            return self._map[key][1]
+        except KeyError:
+            return None
+    
+    def inheritanceTree( self ) -> dict:
+        r = {}
+        for fname, map in self._docs.items():
+            for key, doc in map.items():
+                if doc.isConnected( self._env ):
+                    r[key] = doc.inheritanceTree( doc )
+        return r
+    
     def _docMerge( self, item: baseObject.ReadOnlyObject, env: str=None ):
         doc = yaml_doc.Doc( self.next_id, base_object=item, env=env, dconfig=self )
         self.next_id += 1

@@ -48,7 +48,7 @@ class Backendgroup( baseObject.BaseObject ):
     
     def getAttrs( self ):
         r = super().getAttrs()
-        r['backendHosts'] = [host.export() for host in self._hosts]
+        r['backendHosts'] = [host.export() for host in self._hosts.values()]
         return r
     
     def hosts( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
@@ -70,7 +70,7 @@ class Backendgroup( baseObject.BaseObject ):
         del self.attrs['backendHosts']
     
     def datafy( self, attrs: dict=None, addon: dict=None ) -> str:
-        hosts = [h.dict() for h in self._hosts]
+        hosts = [h.dict() for h in self._hosts.values()]
         return super().datafy( attrs=attrs, addon={'backendHosts': hosts} )
     
     """
@@ -129,7 +129,7 @@ class Backend( baseObject.BaseObject ):
         return f"{self.protocol}://{self.hostName}:{self.port}"
     
     def dict( self ):
-        return self.__dict__
+        return { 'hostName': self.hostName, 'protocol': self.protocol, 'port': self.port, 'mode': self.mode, 'spare': self.spare, 'weight': self.weight }
     
     def export( self ):
         return {

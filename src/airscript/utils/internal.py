@@ -54,13 +54,19 @@ def itemgetter_id( obj ) -> int:
     """
     Return operator.itemgetter() keys as integer
     """
-    return int( itemgetter(0)(obj) )
+    try:
+        return int( itemgetter(0)(obj) )
+    except ValueError:
+        return 0
 
 def itemgetter_nr_1( obj ) -> int:
     """
     Return operator.itemgetter() keys as integer
     """
-    return int( itemgetter(1)(obj) )
+    try:
+        return int( itemgetter(1)(obj) )
+    except ValueError:
+        return 0
 
 def collectKeyNames( dictionary, path="", level=1 ) -> list[str|int]:
     lst = []

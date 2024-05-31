@@ -68,7 +68,7 @@ class Doc( object ):
                 self._connections = { env: ovrl }
                 self._spec = self._reduce2Env( self._spec, env )
             else:
-                self._connections = yaml_dict['metadata']['connections']
+                self._connections = utils.getDictValue( yaml_dict, 'metadata.connections', {} )
             self._environments = utils.getDictValue( yaml_dict, 'metadata.environments' )
             self._parents = utils.getDictValue( yaml_dict, 'metadata.inherits', [] )
             # try:
@@ -85,6 +85,9 @@ class Doc( object ):
             del self._spec['name']
         except KeyError:
             pass
+    
+    def __repr__( self ) -> str:
+        return str( { 'kind': self._kind, 'name': self._name, 'env': self._environments } )
     
     def getKind( self ) -> str:
         return self._kind
@@ -138,12 +141,26 @@ class Doc( object ):
                 'kind': self._kind,
                 'metadata': {
                     'name': self._name,
-                    'connections': self._connections,
                 },
-                'spec': self._spec,
+                'spec': self._dictify( self._spec ),
         }
         if self._environments:
             r['metadata']['environments'] = self._environments
+        if self._connections:
+            r['metadata']['connections'] = self._connections
+        if self._parents:
+            r['metadata']['inherits'] = self._parents
+        return r
+    
+    def _dictify( self, spec: dict ) -> dict:
+        r = {}
+        for k,v in spec.items():
+            if isinstance( v, envvalue.EnvValue ):
+                r[k] = v.export()
+            elif isinstance( v, dict ):
+                r[k] = self._dictify( v )
+            else:
+                r[k] = v
         return r
     
     def update( self, doc: Self, env: str=None ):
@@ -157,6 +174,7 @@ class Doc( object ):
         else:
             env = "default"
         self._connections[env] = doc._base_object.listRelWithKind()
+        #self._parents 
         self._changelog.replace( "metadata.connections", self._connections[env] )
         self._updateValues( self._spec, doc._spec, defaults.get( self._kind ), "", env )
 

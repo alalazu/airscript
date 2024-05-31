@@ -58,37 +58,92 @@ from airscript.model import template
 from airscript.model import vhost
 from airscript.model import validator
 
-from airscript.model import gateway
+from airscript.model import baseObject, gateway
 from pyAirlock.gateway.config_api import gateway as gw_api
 
 from airscript.utils import internal
-from pyAirlock.common import log
+from pyAirlock.common import log, utils
+
+
+TYPENAME2KIND = {
+    "api-policy-service": "APIPolicyService",
+    "back-end-group": "BackendGroup",
+    "ssl-certificate": "TLSCertificate",
+    "graphql-document": "GraphQLDocument",
+    "host": "Host",
+    "icap-environment": "ICAPEnvironment",
+    "ip-address-list": "IPList",
+    "local-json-web-key-set": "JWKSLocal",
+    "remote-json-web-key-set": "JWKSRemote",
+    "kerberos-environment": "KerberosEnvironment",
+    "mapping": "Mapping",
+    "allowed-network-endpoint": "AllowedNetworkEndpoint",
+    "node": "GatewayClusterNode",
+    "openapi-document": "OpenAPIDocument",
+    "mapping-template": "MappingTemplate",
+    "virtual-host": "VirtualHost",
+}
+KIND2TYPENAME = {
+    "APIPolicyService": "api-policy-service",
+    "BackendGroup": "back-end-group",
+    "TLSCertificate": "ssl-certificate",
+    "GraphQLDocument": "graphql-document",
+    "Host": "host",
+    "ICAPEnvironment": "icap-environment",
+    "IPList": "ip-address-list",
+    "JWKSLocal": "local-json-web-key-set",
+    "JWKSRemote": "remote-json-web-key-set",
+    "KerberosEnvironment": "kerberos-environment",
+    "Mapping": "mapping",
+    "AllowedNetworkEndpoint": "allowed-network-endpoint",
+    "GatewayClusterNode": "node",
+    "OpenAPIDocument": "openapi-document",
+    "MappingTemplate": "mapping-template",
+    "VirtualHost": "virtual-host",
+}
+LISTKEY2TYPENAME = {
+    "apipolicy": "api-policy-service",
+    "backendgroups": "back-end-group",
+    "certs": "ssl-certificate",
+    "graphql": "graphql-document",
+    "hostnames": "host",
+    "icap": "icap-environment",
+    "iplists": "ip-address-list",
+    "jwks": "local-json-web-key-set",
+    "jwks": "remote-json-web-key-set",
+    "kerberos": "kerberos-environment",
+    "mappings": "mapping",
+    "network_endpoints": "allowed-network-endpoint",
+    "nodes": "node",
+    "openapi": "openapi-document",
+    "templates": "mapping-template",
+    "vhosts": "virtual-host",
+}
+RELATIONSHIP_ORDER = {
+    "api-policy-service": 1000,
+    "back-end-group": 5000,
+    "ssl-certificate": 2000,
+    "graphql-document": 1100,
+    "host": 1,
+    "icap-environment": 3,
+    "ip-address-list": 1200,
+    "local-json-web-key-set": 3200,
+    "remote-json-web-key-set": 3200,
+    "kerberos-environment": 3000,
+    "mapping": 6000,
+    "allowed-network-endpoint": 2,
+    "node": 3100,
+    "openapi-document": 1300,
+    "mapping-template": 0,
+    "virtual-host": 4000,
+}
 
 
 class Configuration( object ):
-    RELATIONSHIP_ORDER = {
-            "api-policy-service": 1000,
-            "back-end-group": 5000,
-            "ssl-certificate": 2000,
-            "graphql-document": 1100,
-            "host": 1,
-            "icap-environment": 3,
-            "ip-address-list": 1200,
-            "local-json-web-key-set": 3200,
-            "remote-json-web-key-set": 3200,
-            "kerberos-environment": 3000,
-            "mapping": 6000,
-            "allowed-network-endpoint": 2,
-            "node": 3100,
-            "openapi-document": 1300,
-            "mapping-template": 0,
-            "virtual-host": 4000,
-    }
-
     def __init__( self, obj, conn: gw_api.GW, airscript_config ):
         if obj != None:
             self.id = obj['id']
-            self.comment = obj['attributes']['comment']
+            self.comment = utils.getDictValue( obj, 'attributes.comment', "" )
             self.type = obj['attributes']['configType']
             self.createdAt = obj['attributes']['createdAt']
             self.timestamp = datetime.datetime.fromisoformat( self.createdAt )
@@ -102,6 +157,7 @@ class Configuration( object ):
         self.conn = conn
         self._airscript_config = airscript_config
         self._loaded = False
+        self._ordered_types = None
         self._log = log.Log( self.__module__ )
         self._reset()
     
@@ -112,85 +168,89 @@ class Configuration( object ):
         self._reset()
         self._loaded = False
     
-    def getObjects( self, elementName: str ) -> dict:
-        if elementName == "api-policy-service":
+    def getObjects( self, type_name: str ) -> dict:
+        if type_name == "api-policy-service":
             obj = self.objects['apipolicy']
-        elif elementName == "back-end-group":
+        elif type_name == "back-end-group":
             obj = self.objects['backendgroups']
-        elif elementName == "ssl-certificate":
+        elif type_name == "ssl-certificate":
             obj = self.objects['certs']
-        elif elementName == "graphql-document":
+        elif type_name == "graphql-document":
             obj = self.objects['graphql']
-        elif elementName == "host":
+        elif type_name == "host":
             obj = self.objects['hostnames']
-        elif elementName == "icap-environment":
+        elif type_name == "icap-environment":
             obj = self.objects['icap']
-        elif elementName == "ip-address-list":
+        elif type_name == "ip-address-list":
             obj = self.objects['iplists']
-        elif elementName == "local-json-web-key-set":
+        elif type_name == "local-json-web-key-set":
             obj = self.objects['jwks']
-        elif elementName == "remote-json-web-key-set":
+        elif type_name == "remote-json-web-key-set":
             obj = self.objects['jwks']
-        elif elementName == "kerberos-environment":
+        elif type_name == "kerberos-environment":
             obj = self.objects['kerberos']
-        elif elementName == "mapping":
+        elif type_name == "mapping":
             obj = self.objects['mappings']
-        elif elementName == "allowed-network-endpoint":
+        elif type_name == "allowed-network-endpoint":
             obj = self.objects['network_endpoints']
-        elif elementName == "node":
+        elif type_name == "node":
             obj = self.objects['nodes']
-        elif elementName == "openapi-document":
+        elif type_name == "openapi-document":
             obj = self.objects['openapi']
-        elif elementName == "mapping-template":
+        elif type_name == "mapping-template":
             obj = self.objects['templates']
-        elif elementName == "virtual-host":
+        elif type_name == "virtual-host":
             obj = self.objects['vhosts']
         return obj
 
-    def getListFunc( self, elementName: str ):
-        if elementName == "api-policy-service":
+    def getListFunc( self, type_name: str ):
+        if type_name == "api-policy-service":
             func = self.apipolicy
-        elif elementName == "back-end-group":
+        elif type_name == "back-end-group":
             func = self.backendgroups
-        elif elementName == "ssl-certificate":
+        elif type_name == "ssl-certificate":
             func = self.certificates
-        elif elementName == "graphql-document":
+        elif type_name == "graphql-document":
             func = self.graphql
-        elif elementName == "host":
+        elif type_name == "host":
             func = self.hostnames
-        elif elementName == "icap-environment":
+        elif type_name == "icap-environment":
             func = self.icap
-        elif elementName == "ip-address-list":
+        elif type_name == "ip-address-list":
             func = self.iplists
-        elif elementName == "local-json-web-key-set":
+        elif type_name == "local-json-web-key-set":
             func = self.jwks
-        elif elementName == "remote-json-web-key-set":
+        elif type_name == "remote-json-web-key-set":
             func = self.jwks
-        elif elementName == "kerberos-environment":
+        elif type_name == "kerberos-environment":
             func = self.kerberos
-        elif elementName == "mapping":
+        elif type_name == "mapping":
             func = self.mappings
-        elif elementName == "allowed-network-endpoint":
+        elif type_name == "allowed-network-endpoint":
             func = self.networkendpoints
-        elif elementName == "node":
+        elif type_name == "node":
             func = self.nodes
-        elif elementName == "openapi-document":
+        elif type_name == "openapi-document":
             func = self.openapi
-        elif elementName == "mapping-template":
+        elif type_name == "mapping-template":
             func = self.templates
-        elif elementName == "virtual-host":
+        elif type_name == "virtual-host":
             func = self.vhosts
         return func
     
-    def connectGateway( self, gw: gateway.Gateway ) -> bool:
-        self.conn = gw.getConnection()
-        return self.conn != None
+    def connectGateway( self, gw: gateway.Gateway, label: str ) -> bool:
+        self.conn = gw.session( label=label )
+        if not self.conn:
+            return False
+        if not gw.connect( label=label ):
+            return False
+        gw.configurationCreate( label=label )
 
     def load( self ) -> bool:
         """ Retrieve configuration data (vhosts, mappings etc.) from Airlock Gateway using REST API. """
         if self.conn:
             if self._loaded == False:
-                if self.id == 'new':
+                if self.id == 'new xxxx':
                     r = self.conn.configuration.create()
                 else:
                     self._log.verbose( "Fetching configuration data from '{}'".format( self.conn.getName() ))
@@ -210,32 +270,29 @@ class Configuration( object ):
     def sync( self ):
         """ Upload all changed items and establish connections """
         # keep order, allows linking directly at sync
-        order = {}
-        idx = 0
-        for k in self.objects.keys():
-            try:
-                order[self.RELATIONSHIP_ORDER[k]] = k
-            except KeyError:
-                order[idx] = k
-                idx += 1
-        for k in sorted( order ):
-            element = order[k]
+        if not self._ordered_types:
+            self._orderTypes()
+        for k in sorted( self._ordered_types ):
+            element = self._ordered_types[k]
             for cfg_item in self.objects[element].values():
-                cfg_item.sync()
+                if isinstance( cfg_item, list ):
+                    for item in cfg_item:
+                        item.sync()
+                else:
+                    cfg_item.sync()
             # remove deleted objects
             objs = [k for k,v in self.objects[element].items() if v.isDeleted()]
             for key in objs:
                 del self.objects[element][key]
-            # self.objects[element] = objs
     
     def elementOrderNr( self, type_name: str ) -> int:
         try:
-            return self.RELATIONSHIP_ORDER[type_name]
+            return RELATIONSHIP_ORDER[type_name]
         except KeyError:
             return 0
     
     def elementOrderList( self ):
-        return sorted( self.RELATIONSHIP_ORDER, key=lambda s: int(self.RELATIONSHIP_ORDER[s]) )
+        return sorted( RELATIONSHIP_ORDER, key=lambda s: int(RELATIONSHIP_ORDER[s]) )
     
     def activate( self, comment: str=None ) -> bool:
         """
@@ -249,13 +306,14 @@ class Configuration( object ):
         """
         if not self.conn:
             return False
-        if comment == None:
-            self._log.warning( "No comment specified! If you don't want to specify one, please use '<obj>.activate( comment=\"\" )'" )
-            return False
-        elif comment != "":
-            params = {'comment': comment }
+        if self._loaded or self.comment == "":
+            if comment == None:
+                self._log.warning( "No comment specified! If you don't want to specify one, please use '<obj>.activate( comment=\"\" )'" )
+                return False
+            elif comment != "":
+                params = {'comment': comment }
         else:
-            params = None
+            params = {'comment': self.comment}
         resp = self.conn.post( "/configuration/configurations/activate", data=params, timeout=60 )
         if resp.status_code != 200:
             self._log.error( "Activation failed: %s" % (resp.status_code,) )
@@ -274,13 +332,14 @@ class Configuration( object ):
         """ 
         if not self.conn:
             return False
-        if comment == None:
-            self._log.warning( "No comment specified! If you don't want to specify one, please use '<obj>.activate( comment=\"\" )'" )
-            return False
-        elif comment != "":
-            params = {'comment': comment }
+        if self._loaded or self.comment == "":
+            if comment == None:
+                self._log.warning( "No comment specified! If you don't want to specify one, please use '<obj>.activate( comment=\"\" )'" )
+                return False
+            elif comment != "":
+                params = {'comment': comment }
         else:
-            params = None
+            params = {'comment': self.comment}
         resp = self.conn.post( "/configuration/configurations/save", data=params )
         if resp.status_code != 200:
             self._log.error( "Save failed: %s (%s)" % (resp.status_code,resp.text) )
@@ -309,8 +368,101 @@ class Configuration( object ):
         self._log.verbose( f"Configuration saved to '{zip_file}'" )
         return zip_file
     
+    # def _convertRelationships( self, my_prio: int, declarative_element: dict ):
+    #     obj: baseObject.BaseObject
+    #     declarative_element['relationships'] = {}
+    #     for kind, names in declarative_element['connections'].items():
+    #         type_name = KIND2TYPENAME[kind]
+    #         print( f"- {type_name} - {RELATIONSHIP_ORDER[type_name]}")
+    #         if RELATIONSHIP_ORDER[type_name] > my_prio:
+    #             continue
+    #         objects = self.getObjects( type_name )
+    #         for name in names:
+    #             print( f"  - {name}" )
+    #             obj = self._findByName( objects, name )
+    #             if obj:
+    #                 declarative_element['relationships'][obj.getPath()].append( {'type': type_name, 'id': obj.id} )
+    #     del declarative_element['connections']
+
+    def declarativeImport( self, declarative: dict, env: str=None ):
+        # format of declarative:
+        # { 'source': self._dirname, 'env': env, 'objects': { kind: [{ 'attributes': object, 'connections': {kind: [names]} }] }}
+        self.comment = f"Declarative ({declarative['source']}, env {declarative['env']})"
+        # create objects without connecting them
+        for item_kind, item_lists_per_kind in declarative['objects'].items():
+            type_name = KIND2TYPENAME[item_kind]
+            for item in item_lists_per_kind:
+                if not 'relationships' in item:
+                    item['relationships'] = {}
+                obj = self.createElement( type_name, data={'attributes': item['attributes']} )
+                obj.sync()
+                obj.declarativeStoreConnections( item['connections'] )
+                print( f"{item_kind}: {obj}" )
+                self._addElement2ObjectMap( obj )
+        # establish connections
+        for object_map in self.objects.values():
+            for obj in object_map.values():
+                connections = obj.declarativeGetConnections()
+                if connections:
+                    for ref_kind, names in connections.items():
+                        for name in names:
+                            ref = self._findByName( self.getObjects( KIND2TYPENAME[ref_kind] ), name )
+                            obj.addRel( ref, load=True, backlink=True )
+        self.sync()
+
+        ## keep order, allows linking directly when adding config elements
+        # orderedKinds = {}
+        # idx = 0
+        # for kind in declarative['objects'].keys():
+        #     try:
+        #         orderedKinds[RELATIONSHIP_ORDER[KIND2TYPENAME[kind]]] = kind
+        #     except KeyError:
+        #         idx += 1
+        #         orderedKinds[idx] = kind
+        # for prio in sorted( orderedKinds ):
+        #     kind = orderedKinds[prio]
+        #     type_name = KIND2TYPENAME[kind]
+        #     for item in declarative['objects'][kind]:
+        #         # print( f"{item['attributes']['name']}: {type_name} - {prio}" )
+        #         #self._convertRelationships( prio, item )
+        #         #connections = item['connections']
+        #         #del item['connections']
+        #         if not 'relationships' in item:
+        #             item['relationships'] = {}
+        #         obj = self.createElement( type_name, data={'attributes': item['attributes'], 'relationships': item['relationships']} )
+        #         #item['connections'] = connections
+        #         obj.sync()
+        #         print( obj )
+        #         self._addElement2ObjectMap( obj )
+        #         self._declarativeCreateRelationshipEntry( obj, kind, declarative['objects'] )
+        self.save()
+    
+    def _declarativeCreateRelationshipEntry( self, obj: baseObject.BaseObject, my_kind: str, declarative_objects: dict ):
+        # declarative_objects: { kind: [{ 'attributes': object, 'connections': {kind: [names]} }] }
+        for item_kind, item_lists_per_kind in declarative_objects.items():
+            for item in item_lists_per_kind:
+                for ref_kind, names in item['connections'].items():
+                    if ref_kind != my_kind:
+                        continue
+                    if RELATIONSHIP_ORDER[KIND2TYPENAME[item_kind]] < RELATIONSHIP_ORDER[KIND2TYPENAME[my_kind]]:
+                        # connection to config element which has already/just yet been created
+                        # 
+                        continue
+                    if obj.name in names:
+                        if not 'relationships' in item:
+                            item['relationships'] = {}
+                        try:
+                            item['relationships'][obj.getPath()]['data'].append( {'type': obj.getTypeName(), 'id': obj.id} )
+                        except KeyError:
+                            item['relationships'][obj.getPath()] = {'data':[{'type': obj.getTypeName(), 'id': obj.id}]}
+
     def validate( self ) -> dict:
         """ Retrieve validation messages for this configuration. """
+        if not self.conn:
+            return [ validator.Validator( self, obj={ "code" : "NOT_CONNECTED", "title" : "not connected to Airlock Gateway",
+                                                      "detail" : "The configuration is not associated with a connection to an Airlock Gateway. No operations will succeed until connection is established using .connectGateway()",
+                                                      "source" : { "pointer" : None },
+                                                      "meta" : { "type" : "airscript", "severity" : "ERROR", "model" : None } } ) ]
         if self._loaded == False:
             if self.load() == False:
                 return {}
@@ -380,6 +532,10 @@ class Configuration( object ):
         return internal.itemList( self._templates, id=id, name=name, ids=ids, filter=filter, sort=sort )
 
     def addElement( self, type_name: str, id: str=None, data: dict=None ):
+        obj = self.createElement( type_name, id=id, data=data )
+        return self._addElement2ObjectMap( obj )
+    
+    def createElement( self, type_name: str, id: str=None, data: dict=None ):
         if type_name in ["api-policy-service", "APIPolicyService"]:
             obj = self.addAPIPolicy( id=id, data=data )
         elif type_name in ["back-end-group", "BackendGroup"]:
@@ -414,6 +570,16 @@ class Configuration( object ):
             obj = self.addVHost( id=id, data=data )
         return obj
 
+    def _addElement2ObjectMap( self, obj: baseObject.BaseObject ) -> baseObject.BaseObject:
+        if obj.id:
+            self.getObjects( obj.getTypeName() )[obj.id] = obj
+        else:
+            try:
+                self.getObjects( obj.getTypeName() )[None].append( obj )
+            except KeyError:
+                self.getObjects( obj.getTypeName() )[None] = [obj]
+        return obj
+    
     def addNode( self, id: str=None, data: dict=None ) -> node.Node:
         if id in self._nodes:
             obj = self._nodes[id]
@@ -421,7 +587,6 @@ class Configuration( object ):
                 obj.loadData( data=data )
         else:
             obj = node.Node( self, obj=data, id=id )
-            self._nodes[obj.id] = obj
         return obj
 
     def addVHost( self, id: str=None, data: dict=None ) -> vhost.VirtualHost:
@@ -431,7 +596,6 @@ class Configuration( object ):
                 obj.loadData( data=data )
         else:
             obj = vhost.VirtualHost( self, obj=data, id=id )
-            self._vhosts[obj.id] = obj
         return obj
     
     def addMapping( self, id: str=None, data: dict=None ) -> mapping.Mapping:
@@ -441,7 +605,6 @@ class Configuration( object ):
                 obj.loadData( data=data )
         else:
             obj = mapping.Mapping( self, obj=data, id=id )
-            self._mappings[obj.id] = obj
         return obj
     
     def addTemplate( self, id: str=None, data: dict=None ) -> template.Template:
@@ -451,7 +614,6 @@ class Configuration( object ):
                 obj.loadData( data=data )
         else:
             obj = template.Template( self, obj=data, id=id )
-            self._templates[obj.name] = obj
         return obj
     
     def addAPIPolicy( self, id: str=None, data: dict=None ) -> api_policy.APIPolicy:
@@ -461,7 +623,6 @@ class Configuration( object ):
                 obj.loadData( data=data )
         else:
             obj = api_policy.APIPolicy( self, obj=data, id=id )
-            self._apipolicy[obj.id] = obj
         return obj
     
     def addBackendGroup( self, id: str=None, data: dict=None ) -> backendgroup.Backendgroup:
@@ -471,7 +632,6 @@ class Configuration( object ):
                 obj.loadData( data=data )
         else:
             obj = backendgroup.Backendgroup( self, obj=data, id=id )
-            self._backendgroups[obj.id] = obj
         return obj
     
     def addCertificate( self, id: str=None, data: dict=None ) -> certificate.Certificate:
@@ -481,7 +641,6 @@ class Configuration( object ):
                 obj.loadData( data=data )
         else:
             obj = certificate.Certificate( self, obj=data, id=id )
-            self._certs[obj.id] = obj
         return obj
     
     def addJWKS( self, id: str=None, data: dict=None, remote: bool=True ) -> jwks_object.JWKS:
@@ -491,7 +650,6 @@ class Configuration( object ):
                 obj.loadData( data=data )
         else:
             obj = jwks_object.JWKS( self, obj=data, id=id, remote=remote )
-            self._jwks[obj.id] = obj
         return obj
     
     def addOpenAPI( self, id: str=None, data: dict=None ) -> openapi_object.OpenAPI:
@@ -501,7 +659,6 @@ class Configuration( object ):
                 obj.loadData( data=data )
         else:
             obj = openapi_object.OpenAPI( self, obj=data, id=id )
-            self._openapi[obj.id] = obj
         return obj
     
     def addGraphQL( self, id: str=None, data: dict=None ) -> graphql_object.GraphQL:
@@ -511,7 +668,6 @@ class Configuration( object ):
                 obj.loadData( data=data )
         else:
             obj = graphql_object.GraphQL( self, obj=data, id=id )
-            self._graphql[obj.id] = obj
         return obj
     
     def addHostName( self, id: str=None, data: dict=None ) -> host.Host:
@@ -521,7 +677,6 @@ class Configuration( object ):
                 obj.loadData( data=data )
         else:
             obj = host.Host( self, obj=data, id=id )
-            self._hostnames[obj.id] = obj
         return obj
     
     def addICAP( self, id: str=None, data: dict=None ) -> icap_object.ICAP:
@@ -531,7 +686,6 @@ class Configuration( object ):
                 obj.loadData( data=data )
         else:
             obj = icap_object.ICAP( self, obj=data, id=id )
-            self._icap[obj.id] = obj
         return obj
     
     def addIPList( self, id: str=None, data: dict=None ) -> iplist.IPList:
@@ -541,7 +695,6 @@ class Configuration( object ):
                 obj.loadData( data=data )
         else:
             obj = iplist.IPList( self, obj=data, id=id )
-            self._iplists[obj.id] = obj
         return obj
     
     def addNetworkEndpoint( self, id: str=None, data: dict=None ) -> network_endpoint.NetworkEndpoint:
@@ -551,7 +704,6 @@ class Configuration( object ):
                 obj.loadData( data=data )
         else:
             obj = network_endpoint.NetworkEndpoint( self, obj=data, id=id )
-            self._network_endpoints[obj.id] = obj
         return obj
     
     def addKerberos( self, id: str=None, data: dict=None ) -> kerberos_object.Kerberos:
@@ -561,7 +713,6 @@ class Configuration( object ):
                 obj.loadData( data=data )
         else:
             obj = kerberos_object.Kerberos( self, obj=data, id=id )
-            self._kerberos[obj.id] = obj
         return obj
     
     def getNodes( self ) -> Union[list[dict], None]:
@@ -574,7 +725,7 @@ class Configuration( object ):
             if self.load() == False:
                 return None
         for entry in self.conn.node.read():
-            self.addNode( id=entry['id'], data=entry )
+            self._addElement2ObjectMap( self.addNode( id=entry['id'], data=entry ))
         return self._nodes
     
     def getVHosts( self ) -> Union[list[dict], None]:
@@ -587,7 +738,7 @@ class Configuration( object ):
             if self.load() == False:
                 return None
         for entry in self.conn.vhost.read():
-            obj = self.addVHost( id=entry['id'], data=entry )
+            self._addElement2ObjectMap( self.addVHost( id=entry['id'], data=entry ))
         return self.vhosts()
     
     def getMappings( self ) -> Union[list[dict], None]:
@@ -600,7 +751,7 @@ class Configuration( object ):
             if self.load() == False:
                 return None
         for entry in self.conn.mapping.read():
-            obj = self.addMapping( id=entry['id'], data=entry )
+            self._addElement2ObjectMap( self.addMapping( id=entry['id'], data=entry ))
         return self._mappings
     
     def getTemplates( self ) -> Union[list[dict], None]:
@@ -615,7 +766,7 @@ class Configuration( object ):
         resp = self.conn.get( "/configuration/templates/mappings" )
         if resp.text != "":
             for entry in resp.json()['data']:
-                obj = self.addTemplate( id=entry['id'], data=entry )
+                self._addElement2ObjectMap( self.addTemplate( id=entry['id'], data=entry ))
         return self._templates
     
     def getAPIPolicies( self ) -> Union[list[dict], None]:
@@ -628,7 +779,7 @@ class Configuration( object ):
             if self.load() == False:
                 return None
         for entry in self.conn.api_policy.read():
-            obj = self.addAPIPolicy( id=entry['id'], data=entry )
+            self._addElement2ObjectMap( self.addAPIPolicy( id=entry['id'], data=entry ))
         return self._apipolicy
     
     def getBackendGroups( self ) -> Union[list[dict], None]:
@@ -641,7 +792,7 @@ class Configuration( object ):
             if self.load() == False:
                 return None
         for entry in self.conn.backendgroup.read():
-            obj = self.addBackendGroup( id=entry['id'], data=entry )
+            self._addElement2ObjectMap( self.addBackendGroup( id=entry['id'], data=entry ))
         return self._backendgroups
     
     def getCertificates( self ) -> Union[list[dict], None]:
@@ -654,7 +805,7 @@ class Configuration( object ):
             if self.load() == False:
                 return None
         for entry in self.conn.certificate.read():
-            obj = self.addCertificate( id=entry['id'], data=entry )
+            self._addElement2ObjectMap( self.addCertificate( id=entry['id'], data=entry ))
         return self._certs
     
     def getJWKS( self ) -> Union[list[dict], None]:
@@ -667,9 +818,9 @@ class Configuration( object ):
             if self.load() == False:
                 return None
         for entry in self.conn.jwks_local.read():
-            obj = self.addJWKS( id=entry['id'], data=entry, remote=False )
+            self._addElement2ObjectMap( self.addJWKS( id=entry['id'], data=entry, remote=False ))
         for entry in self.conn.jwks_remote.read():
-            obj = self.addJWKS( id=entry['id'], data=entry )
+            self._addElement2ObjectMap( self.addJWKS( id=entry['id'], data=entry ))
         return self._jwks
     
     def getOpenAPI( self ) -> Union[list[dict], None]:
@@ -682,7 +833,7 @@ class Configuration( object ):
             if self.load() == False:
                 return None
         for entry in self.conn.openapi.read():
-            obj = self.addOpenAPI( id=entry['id'], data=entry )
+            self._addElement2ObjectMap( self.addOpenAPI( id=entry['id'], data=entry ))
         return self._openapi
     
     def getGraphQL( self ) -> Union[list[dict], None]:
@@ -695,7 +846,7 @@ class Configuration( object ):
             if self.load() == False:
                 return None
         for entry in self.conn.graphql.read():
-            obj = self.addGraphQL( id=entry['id'], data=entry )
+            self._addElement2ObjectMap( self.addGraphQL( id=entry['id'], data=entry ))
         return self._graphql
     
     def getHostNames( self ) -> Union[list[dict], None]:
@@ -708,7 +859,7 @@ class Configuration( object ):
             if self.load() == False:
                 return None
         for entry in self.conn.host.read():
-            obj = self.addHostName( id=entry['id'], data=entry )
+            self._addElement2ObjectMap( self.addHostName( id=entry['id'], data=entry ))
         return self._hostnames
     
     def getICAP( self ) -> Union[list[dict], None]:
@@ -721,7 +872,7 @@ class Configuration( object ):
             if self.load() == False:
                 return None
         for entry in self.conn.icap.read():
-            obj = self.addICAP( id=entry['id'], data=entry )
+            self._addElement2ObjectMap( self.addICAP( id=entry['id'], data=entry ))
         return self._icap
     
     def getIPLists( self ) -> Union[list[dict], None]:
@@ -734,7 +885,7 @@ class Configuration( object ):
             if self.load() == False:
                 return None
         for entry in self.conn.iplist.read():
-            obj = self.addIPList( id=entry['id'], data=entry )
+            self._addElement2ObjectMap( self.addIPList( id=entry['id'], data=entry ))
         return self._iplists
     
     def getNetworkEndpoints( self ) -> Union[list[dict], None]:
@@ -747,7 +898,7 @@ class Configuration( object ):
             if self.load() == False:
                 return None
         for entry in self.conn.network_endpoint.read():
-            obj = self.addNetworkEndpoint( id=entry['id'], data=entry )
+            self._addElement2ObjectMap( self.addNetworkEndpoint( id=entry['id'], data=entry ))
         return self._network_endpoints
     
     def getKerberos( self ) -> Union[list[dict], None]:
@@ -760,7 +911,7 @@ class Configuration( object ):
             if self.load() == False:
                 return None
         for entry in self.conn.kerberos.read():
-            obj = self.addKerberos( id=entry['id'], data=entry )
+            self._addElement2ObjectMap( self.addKerberos( id=entry['id'], data=entry ))
         return self._kerberos
     
     def getAll( self ):
@@ -949,7 +1100,7 @@ class Configuration( object ):
         if self._vhosts == None:
             self.getVHosts()
         if criteria == None:
-            return self._findByName( self._vhosts, name )
+            return [ self._findByName( self._vhosts, name ) ]
         self._log.warning( "Criteria search not implemented yet" )
         return None
         
@@ -958,7 +1109,7 @@ class Configuration( object ):
         if self._mappings == None:
             self.getMappings()
         if criteria == None:
-            return self._findByName( self._mappings, name )
+            return [ self._findByName( self._mappings, name ) ]
         self._log.warning( "Criteria search not implemented yet" )
         return None
         
@@ -967,7 +1118,7 @@ class Configuration( object ):
         if self._backendgroups == None:
             self.getBackendGroups()
         if criteria == None:
-            return self._findByName( self._backendgroups, name )
+            return [ self._findByName( self._backendgroups, name ) ]
         self._log.warning( "Criteria search not implemented yet" )
         return None
         
@@ -976,7 +1127,7 @@ class Configuration( object ):
         if self._certs == None:
             self.getCertificates()
         if criteria == None:
-            return self._findByName( self._certs, name )
+            return [ self._findByName( self._certs, name ) ]
         self._log.warning( "Criteria search not implemented yet" )
         return None
         
@@ -985,7 +1136,7 @@ class Configuration( object ):
         if self._jwks == None:
             self.getJWKS()
         if criteria == None:
-            return self._findByName( self._jwks, name )
+            return [ self._findByName( self._jwks, name ) ]
         self._log.warning( "Criteria search not implemented yet" )
         return None
         
@@ -994,7 +1145,7 @@ class Configuration( object ):
         if self._openapi == None:
             self.getOpenAPI()
         if criteria == None:
-            return self._findByName( self._openapi, name )
+            return [ self._findByName( self._openapi, name ) ]
         self._log.warning( "Criteria search not implemented yet" )
         return None
         
@@ -1003,7 +1154,7 @@ class Configuration( object ):
         if self._graphql == None:
             self.getGraphQL()
         if criteria == None:
-            return self._findByName( self._graphql, name )
+            return [ self._findByName( self._graphql, name ) ]
         self._log.warning( "Criteria search not implemented yet" )
         return None
         
@@ -1012,7 +1163,7 @@ class Configuration( object ):
         if self._iplists == None:
             self.getIPLists()
         if criteria == None:
-            return self._findByName( self._iplists, name )
+            return [ self._findByName( self._iplists, name ) ]
         self._log.warning( "Criteria search not implemented yet" )
         return None
         
@@ -1201,13 +1352,25 @@ class Configuration( object ):
         return sorted( (v for v in list_of_dicts.values() if not v.isDeleted()), key=func )
     
     def _findByName( self, objects, name ):
-        r = []
         for k,v in objects.items():
-            if v.isDeleted():
-                continue
-            if v.name == name:
-                r.append( objects[k] )
-            elif name in v.name:
-                r.append( objects[k] )
-        return r
+            if k:
+                v = [v]
+            for item in v:
+                if item.isDeleted():
+                    continue
+                if item.name == name:
+                    return objects[k]
+                # elif name in item.name:
+                #     r.append( objects[k] )
+        return None
+    
+    def _orderTypes( self ):
+        self._ordered_types = {}
+        idx = 0
+        for k in self.objects.keys():
+            try:
+                self._ordered_types[RELATIONSHIP_ORDER[k]] = k
+            except KeyError:
+                self._ordered_types[idx] = k
+                idx += 1
         

@@ -44,6 +44,12 @@ class ReadOnlyObject( object ):
         self._parent = parent
         if obj:
             self.loadData( obj )
+        if self.id:
+            self._attrs_modified = False
+            self._rels_modified = False
+        else:
+            self._attrs_modified = True
+            self._rels_modified = True
         if not hasattr( self, '_typename' ):
             self._typename = ""         # overwritten by individual object types
         if not hasattr( self, '_path' ):
@@ -51,9 +57,8 @@ class ReadOnlyObject( object ):
         if not hasattr( self, '_kind' ):
             self._kind = ""             # overwritten by individual object types
         self._deleted = False
-        self._attrs_modified = False
-        self._rels_modified = False
         self._rels_deleted = {}
+        self._connections = None
         if self._parent.conn != None:
             if not cache.isCached( self._parent.conn.getName(), type( self )):
                 cache.cacheAttributeKeys( self._parent.conn.getName(), type( self ), internal.collectKeyNames( self.attrs ))
@@ -148,30 +153,20 @@ class ReadOnlyObject( object ):
         return r
     
     def loadData( self, data: dict, update: bool=False ):
-        if self.attrs != {}:
-            self._attrs_modified = True
-        try:
-            self.id = int( data['id'] )
-            # self.id = data['id']
-        except (ValueError, TypeError) as e:
-            self.id = data['id']
-        except KeyError:
-            self.id = None
+        self.id = self._extractId( data )
         self.attrs = data['attributes']
+        self._attrs_modified = True
         try:
             self.name = self.attrs['name']
         except KeyError:
             self.name = None
-        if not update:
-            try:
-                for grp,d in data['relationships'].items():
-                    if isinstance( d['data'], list ):
-                        for item in d['data']:
-                            self._addRel( item )
-                    else:
-                        self._addRel( d['data'] )
-            except KeyError:
-                pass
+        if not update and 'relationships' in data:
+            for grp,d in data['relationships'].items():
+                if isinstance( d['data'], list ):
+                    for item in d['data']:
+                        self._addRel( item )
+                else:
+                    self._addRel( d['data'] )
             self._rels_modified = False
 
     def delete( self ) -> bool:
@@ -357,14 +352,14 @@ class ReadOnlyObject( object ):
                         # nohing o do if oher obje is deleed relaionship will be removed auomaiall
                         continue
                     if rel.status == 'del':
-                        if not classPointer.removeConnection( relationship=grp, id=self.id, relation_id=rel.reference.id ):
+                        if not classPointer.removeConnection( connection=grp, id=self.id, relation_id=rel.reference.id ):
                             output.error( f"Sync error for {self._typename}-{self.name}: failed to remove connection to {grp}{rel.reference.name}" )
                         entry = rel.reference._findRel( self )
                         rel.reference.rels[self._typename].remove( entry )
                     elif rel.status == 'new':
                         if self._parent.elementOrderNr( self._typename ) < self._parent.elementOrderNr( grp ):
                             continue
-                        if classPointer.addConnection( relationship=grp, id=self.id, relation_id=rel.reference.id ):
+                        if classPointer.addConnection( connection=grp, id=self.id, relation_id=rel.reference.id ):
                             rel.status = ''
                         else:
                             output.error( f"Sync error for {self._typename}-{self.name}: failed to add connection to {grp}{rel.reference.name}" )
@@ -381,7 +376,7 @@ class ReadOnlyObject( object ):
             for k, v in addon.items():
                 obj['attributes'][k] = v
         if self.id != None:
-            obj['id'] = self.id
+            obj['id'] = str( self.id )
         return obj
     
     def jsonize( self, attrs: dict=None, addon: dict=None ) -> str:
@@ -406,6 +401,15 @@ class ReadOnlyObject( object ):
             kind = self.rels[type_name][0].reference.getKind()
             out['connections'][kind] = [ref.reference.name for ref in self.rels[type_name]]
         return out
+    
+    def declarativeStoreConnections( self, connections: dict ):
+        self._connections = connections
+
+    def declarativeGetConnections( self ) -> dict|None:
+        return self._connections
+
+    def declarativeClearConnections( self ):
+        self._connections = None
 
 
     """
@@ -454,11 +458,8 @@ class ReadOnlyObject( object ):
     
     def _addRel( self, item ):
         type_name = item['type']
-        backlink = True
-        obj = self._parent.addElement( type_name, id=item['id'] )
-        if type_name == "mapping-template":
-            backlink = False
-        if backlink:
+        obj = self._parent.addElement( type_name, id=self._extractId( item ))
+        if type_name != "mapping-template":
             obj.addRel( self, backlink=True )
         self.addRel( obj )
     
@@ -479,6 +480,14 @@ class ReadOnlyObject( object ):
             pass
         return None
 
+    def _extractId( self, data: dict ) -> int|str|None:
+        try:
+            return int( data['id'] )
+        except (ValueError, TypeError) as e:
+            return data['id']
+        except KeyError:
+            return None
+    
 
 class BaseObject( ReadOnlyObject ):
     def __init__( self, parent, obj=None, id=None ):

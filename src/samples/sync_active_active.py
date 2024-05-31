@@ -81,13 +81,13 @@ def sync_active_active( run ):
 
     out.cyan( f"- Downloading configuration" )
     zip_file = origin_config.export()
-    origin_name = origin_node.getConnection().getNodename()
+    origin_name = origin_node.getSession().getNodename()
 
     for name in destinations:
         out.cyan( f"- {name}: uploading" )
         gw = servers[name]
         gw.connect()
-        conn = gw.getConnection()       # pyAirlock gateway instance
+        conn = gw.getSession()       # pyAirlock gateway instance
         old_name = conn.setNodename( origin_name )
         if not conn.config.upload( zip_file, verify=True ):
             out.error( "  failed" )

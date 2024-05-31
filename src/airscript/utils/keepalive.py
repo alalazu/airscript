@@ -135,14 +135,14 @@ class KeepAliveSession( object ):
         return datetime.datetime.fromtimestamp( self.next )
     
     def getConnection( self ):
-        return self.gw.getConnection()
+        return self.gw.getSession()
     
     def getSession( self ):
-        return self.gw.getConnection().session
+        return self.gw.getSession().session
     
     def keepalive( self ):
         try:
-            self.gw.getConnection().keepalive()
+            self.gw.getSession().keepalive()
             self.last = int( time.time() )
         except exception.AirlockError:
             self.errors += 1

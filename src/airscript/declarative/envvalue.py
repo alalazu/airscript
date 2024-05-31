@@ -30,6 +30,9 @@ class EnvValue( object ):
     def __repr__( self ) -> str:
         return str( self.export() )
     
+    def __getstate__( self ) -> dict:
+        return self.export()
+    
     def set( self, value: Any ):
         self._default = value
     
@@ -46,7 +49,9 @@ class EnvValue( object ):
             return self._default
     
     def export( self ) -> dict:
-        r = { "##env##": self._default }
+        r = {}
+        if self._default:
+            r["##env##"] = self._default
         for env, value in self._values.items():
             r[f"##env##{env}"] = value
         return r

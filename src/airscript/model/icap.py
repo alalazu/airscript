@@ -27,10 +27,10 @@ KIND = 'ICAPEnvironment'
 
 typename.register( TYPENAME, KIND )
 
-class ICAP( baseObject.BaseObject ):
+class ICAP( baseObject.ModelElement ):
     def __init__( self, parent, obj=None, id=None ):
         self._typename = TYPENAME
         self._path = 'icap-environments'
         self._kind = KIND
-        baseObject.BaseObject.__init__( self, parent, obj=obj, id=id )
+        baseObject.ModelElement.__init__( self, parent, obj=obj, id=id )
     

@@ -27,15 +27,15 @@ from airscript.utils import output
 from airscript.model import baseObject, vhost
 
 
-class Certificate( baseObject.BaseObject ):
+class Certificate( baseObject.ModelElement ):
     def __init__( self, parent, obj=None, id=None ):
         self._typename = 'ssl-certificate'
         self._path = 'ssl-certificates'
         self._kind = 'TLSCertificate'
-        baseObject.BaseObject.__init__( self, parent, obj=obj, id=id )
+        baseObject.ModelElement.__init__( self, parent, obj=obj, id=id )
     
     def loadData( self, data: dict, update: bool=False ):
-        baseObject.BaseObject.loadData( self, data=data, update=update )
+        baseObject.ModelElement.loadData( self, data=data, update=update )
         if self._parent.conn == None or self._parent.conn.getVersion() >= 7.6:
             attr_name = "certificate"
         else:

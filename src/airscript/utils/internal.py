@@ -91,6 +91,8 @@ def itemList( objects: dict, id: Union[str|int]=None, name: str=None, ids: list[
     """
     if name:
         re_name = re.compile( f"^{name}$" )
+    else:
+        re_name = None
     if id:
         try:
             ids.append( id )
@@ -99,16 +101,15 @@ def itemList( objects: dict, id: Union[str|int]=None, name: str=None, ids: list[
     if ids:
         ids = [str(x) for x in ids]
     result = {}
+    idx = -1
     for k,v in objects.items():
-        if v.isDeleted():
-            continue
-        if name and not re_name.match( v.name ):
-            continue
-        if ids and not v.id in ids:
-            continue
-        if filter and not v.filter( filter ):
-            continue
-        result[k] = v
+        if isinstance( v, list ):
+            for item in v:
+                if _itemFilter( item, id=id, name=name, ids=ids, filter=filter, re_name=re_name ):
+                    result[idx] = v
+                    idx -= 1
+        elif _itemFilter( v, id=id, name=name, ids=ids, filter=filter, re_name=re_name ):
+            result[k] = v
     if sort:
         if sort == 'name':
             func = itemgetter_lc_name
@@ -123,3 +124,13 @@ def itemList( objects: dict, id: Union[str|int]=None, name: str=None, ids: list[
     else:
         return result
 
+def _itemFilter( item, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, re_name=None ) -> bool:
+    if item.isDeleted():
+        return False
+    if name and not re_name.match( item.name ):
+        return False
+    if ids and not item.id in ids:
+        return False
+    if filter and not item.filter( filter ):
+        return False
+    return True

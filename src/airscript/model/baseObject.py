@@ -489,7 +489,7 @@ class ReadOnlyObject( object ):
             return None
     
 
-class BaseObject( ReadOnlyObject ):
+class ModelElement( ReadOnlyObject ):
     def __init__( self, parent, obj=None, id=None ):
         ReadOnlyObject.__init__( self, parent, obj=obj, id=id )
         if obj == None:

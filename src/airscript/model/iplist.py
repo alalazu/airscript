@@ -28,12 +28,12 @@ KIND = 'IPList'
 
 typename.register( TYPENAME, KIND )
 
-class IPList( baseObject.BaseObject ):
+class IPList( baseObject.ModelElement ):
     def __init__( self, parent, obj=None, id=None ):
         self._typename = TYPENAME
         self._path = 'ip-address-lists'
         self._kind = KIND
-        baseObject.BaseObject.__init__( self, parent, obj=obj, id=id )
+        baseObject.ModelElement.__init__( self, parent, obj=obj, id=id )
     
     def me( self ):
         r = super().me()

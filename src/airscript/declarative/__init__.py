@@ -104,7 +104,7 @@ class DConfig( object ):
             for declarative_doc in docs:
                 if declarative_doc.connectionsReduce2Env( env, lookup ):
                     changed = True
-                if not declarative_doc.isConnected( env ):
+                if not declarative_doc.isConnected( env ) and not declarative_doc.isNode():       # node has no connections but we need it
                     tbd.append( declarative_doc )
             if tbd != []:
                 for entry in tbd:
@@ -133,6 +133,32 @@ class DConfig( object ):
                 object_dicts[declarative_doc.getKind()].append( spec )
             except KeyError:
                 object_dicts[declarative_doc.getKind()] = [spec]
+        return { 'source': self._dirname, 'env': env, 'objects': object_dicts }
+
+    def buildNode( self, name: str, env: str=None, force: bool=False ) -> dict:
+        declarative_doc: yaml_doc.Doc
+        if not self._loaded:
+            self.load( env=env )
+        if self._loaded != "config" and not force:
+            output.error( "Loaded config not in format 'config' - reload or specify 'force=True'" )
+            return None
+        docs = []
+        lookup = {}
+        # build structures
+        for _, doc_lst in self._docs.items():
+            for _, declarative_doc in doc_lst.items():
+                if declarative_doc.isNode():
+                    docs.append( declarative_doc )
+                    lookup[declarative_doc.key] = declarative_doc
+        # create config
+        object_dicts = {}
+        for declarative_doc in docs:
+            if declarative_doc.getName() == name:
+                spec = { "attributes": declarative_doc.getSpec(), 'connections': {} }
+                try:
+                    object_dicts[declarative_doc.getKind()].append( spec )
+                except KeyError:
+                    object_dicts[declarative_doc.getKind()] = [spec]
         return { 'source': self._dirname, 'env': env, 'objects': object_dicts }
 
     def buildConnections( self, env: str, force: bool=False ) -> configuration.Configuration:

@@ -27,12 +27,12 @@ KIND = 'KerberosEnvironment'
 
 typename.register( TYPENAME, KIND )
 
-class Kerberos( baseObject.BaseObject ):
+class Kerberos( baseObject.ModelElement ):
     def __init__( self, parent, obj=None, id=None ):
         self._typename = TYPENAME
         self._path = 'kerberos-environments'
         self._kind = KIND
-        baseObject.BaseObject.__init__( self, parent, obj=obj, id=id )
+        baseObject.ModelElement.__init__( self, parent, obj=obj, id=id )
     
     """
     interactions with Gateway REST API

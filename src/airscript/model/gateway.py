@@ -161,13 +161,14 @@ class Gateway( object ):
             conn.setTLSVerify( self._tls_verify )
             if conn.connect() == False:
                 return False
-            self._sessions[label] = conn
-            self._log.verbose( "Connected to '%s'" % (self.name,) )
-            self.version = conn.getVersion()
-            self.nodename = conn.getNodename()
-            return True
         except exception.AirlockConnectionError:
             return False
+        conn.post( "/configuration/configurations/load-empty-config", expect=[204] )
+        self._sessions[label] = conn
+        self._log.verbose( "Connected to '%s'" % (self.name,) )
+        self.version = conn.getVersion()
+        self.nodename = conn.getNodename()
+        return True
     
     def disconnect( self, label: str=None ):
         """ Disconnect from Airlock Gateway, closing administrator session. """

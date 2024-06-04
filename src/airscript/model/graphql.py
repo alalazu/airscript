@@ -28,12 +28,12 @@ KIND = 'GraphQLDocument'
 
 typename.register( TYPENAME, KIND )
 
-class GraphQL( baseObject.BaseObject ):
+class GraphQL( baseObject.ModelElement ):
     def __init__( self, parent, obj=None, id=None ):
         self._typename = TYPENAME
         self._path = 'api-security/graphql-documents'
         self._kind = KIND
-        baseObject.BaseObject.__init__( self, parent, obj=obj, id=id )
+        baseObject.ModelElement.__init__( self, parent, obj=obj, id=id )
     
     """
     interactions with Gateway REST API

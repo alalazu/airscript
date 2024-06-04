@@ -27,10 +27,10 @@ KIND = 'AllowedNetworkEndpoint'
 
 typename.register( TYPENAME, KIND )
 
-class NetworkEndpoint( baseObject.BaseObject ):
+class NetworkEndpoint( baseObject.ModelElement ):
     def __init__( self, parent, obj=None, id=None ):
         self._typename = TYPENAME
         self._path = 'allowed-network-endpoints'
         self._kind = KIND
-        baseObject.BaseObject.__init__( self, parent, obj=obj, id=id )
+        baseObject.ModelElement.__init__( self, parent, obj=obj, id=id )
     

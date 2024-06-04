@@ -28,12 +28,12 @@ KIND = 'Mapping'
 
 typename.register( TYPENAME, KIND )
 
-class Mapping( baseObject.BaseObject ):
+class Mapping( baseObject.ModelElement ):
     def __init__( self, parent, obj=None, id=None ):
         self._typename = TYPENAME
         self._path = 'mappings'
         self._kind = KIND
-        baseObject.BaseObject.__init__( self, parent, obj=obj, id=id )
+        baseObject.ModelElement.__init__( self, parent, obj=obj, id=id )
     
     def me( self ):
         r = super().me()

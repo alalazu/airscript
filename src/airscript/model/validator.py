@@ -25,7 +25,7 @@ class Validator( baseObject.ReadOnlyObject ):
     def __init__( self, parent, obj=None, id=None ):
         self._typename = 'validator-message'
         self._path = ''
-        baseObject.BaseObject.__init__( self, parent, obj=obj, id=id )
+        baseObject.ModelElement.__init__( self, parent, obj=obj, id=id )
     
     def me( self ):
         r = super().me()

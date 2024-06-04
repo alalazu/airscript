@@ -31,7 +31,7 @@ LOCAL_KIND = 'JWKSLocal'
 typename.register( REMOTE_TYPENAME, REMOTE_KIND )
 typename.register( LOCAL_TYPENAME, LOCAL_KIND )
 
-class JWKS( baseObject.BaseObject ):
+class JWKS( baseObject.ModelElement ):
     def __init__( self, parent, obj=None, id=None, remote=True ):
         self._remote = remote
         if remote:
@@ -42,7 +42,7 @@ class JWKS( baseObject.BaseObject ):
             self._typename = LOCAL_TYPENAME
             self._path = 'json-web-key-sets/locals'
             self._kind = LOCAL_KIND
-        baseObject.BaseObject.__init__( self, parent, obj=obj, id=id )
+        baseObject.ModelElement.__init__( self, parent, obj=obj, id=id )
     
     def me( self ):
         r = super().me()

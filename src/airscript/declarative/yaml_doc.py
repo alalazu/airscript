@@ -70,13 +70,13 @@ class Doc( object ):
             else:
                 self._connections = utils.getDictValue( yaml_dict, 'metadata.connections', {} )
             self._environments = utils.getDictValue( yaml_dict, 'metadata.environments' )
-            self._parents = utils.getDictValue( yaml_dict, 'metadata.inherits', [] )
+            self._parents = utils.getDictValue( yaml_dict, 'metadata.inherit', [] )
             # try:
             #     self._environments = yaml_dict['metadata']['environments']
             # except KeyError:
             #     self._environments = None
             # try:
-            #     self._parents = yaml_dict['metadata']['inherits']
+            #     self._parents = yaml_dict['metadata']['inherit']
             # except KeyError:
             #     self._parents = None
             self.key = create_key( yaml_dict=yaml_dict )
@@ -113,7 +113,13 @@ class Doc( object ):
             except KeyError:
                 pass
         return False
-
+    
+    def isNode( self ) -> bool:
+        try:
+            return self._kind == "GatewayClusterNode" and self._spec['hostName']
+        except KeyError:
+            return False
+    
     def getSpec( self ) -> dict:
         r = self._inheritSpec( defaults.get( self._kind ), self )
         # base = defaults.get( self._kind )
@@ -149,7 +155,7 @@ class Doc( object ):
         if self._connections:
             r['metadata']['connections'] = self._connections
         if self._parents:
-            r['metadata']['inherits'] = self._parents
+            r['metadata']['inherit'] = self._parents
         return r
     
     def _dictify( self, spec: dict ) -> dict:

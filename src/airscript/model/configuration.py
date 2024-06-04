@@ -244,14 +244,19 @@ class Configuration( object ):
             return False
         if not gw.connect( label=label ):
             return False
-        gw.configurationCreate( label=label )
+        return True
 
     def load( self ) -> bool:
         """ Retrieve configuration data (vhosts, mappings etc.) from Airlock Gateway using REST API. """
         if self.conn:
             if self._loaded == False:
-                if self.id == 'new xxxx':
-                    r = self.conn.configuration.create()
+                if self.id == 'new':
+                    r = True
+                    # r = self.conn.configuration.create()
+                    # if r:
+                    #     self.id = 'empty'
+                elif self.id == 'empty':
+                    r = True
                 else:
                     self._log.verbose( "Fetching configuration data from '{}'".format( self.conn.getName() ))
                     r = self.conn.configuration.load( self.id )
@@ -259,6 +264,8 @@ class Configuration( object ):
                     self._log.error( "Loading failed: not found" )
                 else:
                     self._loaded = True
+        else:
+            self._log.error( "Loading failed: not connected to any gateway" )
         return self._loaded
     
     def loadAll( self ) -> bool:
@@ -368,25 +375,13 @@ class Configuration( object ):
         self._log.verbose( f"Configuration saved to '{zip_file}'" )
         return zip_file
     
-    # def _convertRelationships( self, my_prio: int, declarative_element: dict ):
-    #     obj: baseObject.BaseObject
-    #     declarative_element['relationships'] = {}
-    #     for kind, names in declarative_element['connections'].items():
-    #         type_name = KIND2TYPENAME[kind]
-    #         print( f"- {type_name} - {RELATIONSHIP_ORDER[type_name]}")
-    #         if RELATIONSHIP_ORDER[type_name] > my_prio:
-    #             continue
-    #         objects = self.getObjects( type_name )
-    #         for name in names:
-    #             print( f"  - {name}" )
-    #             obj = self._findByName( objects, name )
-    #             if obj:
-    #                 declarative_element['relationships'][obj.getPath()].append( {'type': type_name, 'id': obj.id} )
-    #     del declarative_element['connections']
-
-    def declarativeImport( self, declarative: dict, env: str=None ):
+    def declarativeImport( self, declarative: dict ) -> bool:
         # format of declarative:
-        # { 'source': self._dirname, 'env': env, 'objects': { kind: [{ 'attributes': object, 'connections': {kind: [names]} }] }}
+        # { 'source': path_to_config_dir, 'env': env, 'objects': { kind: [{ 'attributes': object, 'connections': {kind: [names]} }] }}
+        if self._loaded == False:
+            if self.load() == False:
+                return False
+            self.getAll()
         self.comment = f"Declarative ({declarative['source']}, env {declarative['env']})"
         # create objects without connecting them
         for item_kind, item_lists_per_kind in declarative['objects'].items():
@@ -409,53 +404,37 @@ class Configuration( object ):
                             ref = self._findByName( self.getObjects( KIND2TYPENAME[ref_kind] ), name )
                             obj.addRel( ref, load=True, backlink=True )
         self.sync()
-
-        ## keep order, allows linking directly when adding config elements
-        # orderedKinds = {}
-        # idx = 0
-        # for kind in declarative['objects'].keys():
-        #     try:
-        #         orderedKinds[RELATIONSHIP_ORDER[KIND2TYPENAME[kind]]] = kind
-        #     except KeyError:
-        #         idx += 1
-        #         orderedKinds[idx] = kind
-        # for prio in sorted( orderedKinds ):
-        #     kind = orderedKinds[prio]
-        #     type_name = KIND2TYPENAME[kind]
-        #     for item in declarative['objects'][kind]:
-        #         # print( f"{item['attributes']['name']}: {type_name} - {prio}" )
-        #         #self._convertRelationships( prio, item )
-        #         #connections = item['connections']
-        #         #del item['connections']
-        #         if not 'relationships' in item:
-        #             item['relationships'] = {}
-        #         obj = self.createElement( type_name, data={'attributes': item['attributes'], 'relationships': item['relationships']} )
-        #         #item['connections'] = connections
-        #         obj.sync()
-        #         print( obj )
-        #         self._addElement2ObjectMap( obj )
-        #         self._declarativeCreateRelationshipEntry( obj, kind, declarative['objects'] )
-        self.save()
+        #self.save()
+        return True
     
-    def _declarativeCreateRelationshipEntry( self, obj: baseObject.BaseObject, my_kind: str, declarative_objects: dict ):
-        # declarative_objects: { kind: [{ 'attributes': object, 'connections': {kind: [names]} }] }
-        for item_kind, item_lists_per_kind in declarative_objects.items():
+    def declarativeNode( self, declarative: dict ) -> bool:
+        # format of declarative:
+        # { 'source': path_to_config_dir, 'env': None, 'objects': { 'GatewayClusterNode': [{ 'attributes': object, 'connections': {} }] }}
+        # create node
+        if len( declarative['objects']['GatewayClusterNode'] ) != 1:
+            return False
+        item = declarative['objects']['GatewayClusterNode'][0]
+        for item_kind, item_lists_per_kind in declarative['objects'].items():
             for item in item_lists_per_kind:
-                for ref_kind, names in item['connections'].items():
-                    if ref_kind != my_kind:
-                        continue
-                    if RELATIONSHIP_ORDER[KIND2TYPENAME[item_kind]] < RELATIONSHIP_ORDER[KIND2TYPENAME[my_kind]]:
-                        # connection to config element which has already/just yet been created
-                        # 
-                        continue
-                    if obj.name in names:
-                        if not 'relationships' in item:
-                            item['relationships'] = {}
-                        try:
-                            item['relationships'][obj.getPath()]['data'].append( {'type': obj.getTypeName(), 'id': obj.id} )
-                        except KeyError:
-                            item['relationships'][obj.getPath()] = {'data':[{'type': obj.getTypeName(), 'id': obj.id}]}
-
+                if not 'relationships' in item:
+                    item['relationships'] = {}
+                obj = self.createElement( 'node', data={'attributes': item['attributes']} )
+                obj.sync()
+                obj.declarativeStoreConnections( item['connections'] )
+                print( f"{item_kind}: {obj}" )
+                self._addElement2ObjectMap( obj )
+        # establish connections
+        for object_map in self.objects.values():
+            for obj in object_map.values():
+                connections = obj.declarativeGetConnections()
+                if connections:
+                    for ref_kind, names in connections.items():
+                        for name in names:
+                            ref = self._findByName( self.getObjects( KIND2TYPENAME[ref_kind] ), name )
+                            obj.addRel( ref, load=True, backlink=True )
+        self.sync()
+        #self.save()
+    
     def validate( self ) -> dict:
         """ Retrieve validation messages for this configuration. """
         if not self.conn:
@@ -570,7 +549,7 @@ class Configuration( object ):
             obj = self.addVHost( id=id, data=data )
         return obj
 
-    def _addElement2ObjectMap( self, obj: baseObject.BaseObject ) -> baseObject.BaseObject:
+    def _addElement2ObjectMap( self, obj: baseObject.ModelElement ) -> baseObject.ModelElement:
         if obj.id:
             self.getObjects( obj.getTypeName() )[obj.id] = obj
         else:
@@ -581,15 +560,28 @@ class Configuration( object ):
         return obj
     
     def addNode( self, id: str=None, data: dict=None ) -> node.Node:
+        obj: node.Node
+        obj = None
         if id in self._nodes:
             obj = self._nodes[id]
             if data:
                 obj.loadData( data=data )
-        else:
+        elif data:
+            for found in self._nodes.values():
+                try:
+                    if found.name == data['attributes']['hostName'] or (not found.name and (self.conn.getHost() == data['attributes']['hostName'] or self.conn.getNodename() == data['attributes']['hostName'])):
+                        obj = found
+                        data['id'] = obj.id
+                        obj.loadData( data=data )
+                        break
+                except KeyError:
+                    pass
+        if obj == None:
             obj = node.Node( self, obj=data, id=id )
         return obj
 
     def addVHost( self, id: str=None, data: dict=None ) -> vhost.VirtualHost:
+        obj: vhost.VirtualHost
         if id in self._vhosts:
             obj = self._vhosts[id]
             if data:
@@ -599,6 +591,7 @@ class Configuration( object ):
         return obj
     
     def addMapping( self, id: str=None, data: dict=None ) -> mapping.Mapping:
+        obj: mapping.Mapping
         if id in self._mappings:
             obj = self._mappings[id]
             if data:
@@ -608,6 +601,7 @@ class Configuration( object ):
         return obj
     
     def addTemplate( self, id: str=None, data: dict=None ) -> template.Template:
+        obj: template.Template
         if id in self._templates:
             obj = self._templates[id]
             if data:
@@ -617,6 +611,7 @@ class Configuration( object ):
         return obj
     
     def addAPIPolicy( self, id: str=None, data: dict=None ) -> api_policy.APIPolicy:
+        obj: api_policy.APIPolicy
         if id in self._apipolicy:
             obj = self._apipolicy[id]
             if data:
@@ -626,6 +621,7 @@ class Configuration( object ):
         return obj
     
     def addBackendGroup( self, id: str=None, data: dict=None ) -> backendgroup.Backendgroup:
+        obj: backendgroup.Backendgroup
         if id in self._backendgroups:
             obj = self._backendgroups[id]
             if data:
@@ -635,6 +631,7 @@ class Configuration( object ):
         return obj
     
     def addCertificate( self, id: str=None, data: dict=None ) -> certificate.Certificate:
+        obj: certificate.Certificate
         if id in self._certs:
             obj = self._certs[id]
             if data:
@@ -644,6 +641,7 @@ class Configuration( object ):
         return obj
     
     def addJWKS( self, id: str=None, data: dict=None, remote: bool=True ) -> jwks_object.JWKS:
+        obj: jwks_object.JWKS
         if id in self._jwks:
             obj = self._jwks[id]
             if data:
@@ -653,6 +651,7 @@ class Configuration( object ):
         return obj
     
     def addOpenAPI( self, id: str=None, data: dict=None ) -> openapi_object.OpenAPI:
+        obj: openapi_object.OpenAPI
         if id in self._openapi:
             obj = self._openapi[id]
             if data:
@@ -662,6 +661,7 @@ class Configuration( object ):
         return obj
     
     def addGraphQL( self, id: str=None, data: dict=None ) -> graphql_object.GraphQL:
+        obj: graphql_object.GraphQL
         if id in self._graphql:
             obj = self._graphql[id]
             if data:
@@ -671,6 +671,7 @@ class Configuration( object ):
         return obj
     
     def addHostName( self, id: str=None, data: dict=None ) -> host.Host:
+        obj: host.Host
         if id in self._hostnames:
             obj = self._hostnames[id]
             if data:
@@ -680,6 +681,7 @@ class Configuration( object ):
         return obj
     
     def addICAP( self, id: str=None, data: dict=None ) -> icap_object.ICAP:
+        obj: icap_object.ICAP
         if id in self._icap:
             obj = self._icap[id]
             if data:
@@ -689,6 +691,7 @@ class Configuration( object ):
         return obj
     
     def addIPList( self, id: str=None, data: dict=None ) -> iplist.IPList:
+        obj: iplist.IPList
         if id in self._iplists:
             obj = self._iplists[id]
             if data:
@@ -698,6 +701,7 @@ class Configuration( object ):
         return obj
     
     def addNetworkEndpoint( self, id: str=None, data: dict=None ) -> network_endpoint.NetworkEndpoint:
+        obj: network_endpoint.NetworkEndpoint
         if id in self._network_endpoints:
             obj = self._network_endpoints[id]
             if data:
@@ -707,6 +711,7 @@ class Configuration( object ):
         return obj
     
     def addKerberos( self, id: str=None, data: dict=None ) -> kerberos_object.Kerberos:
+        obj: kerberos_object.Kerberos
         if id in self._kerberos:
             obj = self._kerberos[id]
             if data:
@@ -987,82 +992,82 @@ class Configuration( object ):
         return self._listSorted( self._nodes, key='name' )
         # return sorted( self._nodes.items(), key=internal.itemgetter_lc_name )
     
-    def listVHosts( self ):
+    def listVHosts( self ) -> list[dict[vhost.VirtualHost]]:
         """ Return sorted list of virtual hosts. """
         if self._vhosts == None:
             self.getVHosts()
         return self._listSorted( self._vhosts, key='name' )
         # return sorted( self._vhosts.items(), key=internal.itemgetter_lc_name )
     
-    def listMappings( self ):
+    def listMappings( self ) -> list[dict[mapping.Mapping]]:
         """ Return sorted list of mappings. """
         if self._mappings == None:
             self.getMappings()
         return self._listSorted( self._mappings, key='name' )
         # return sorted( self._mappings.items(), key=internal.itemgetter_lc_name )
     
-    def listAPIPolicies( self ):
+    def listAPIPolicies( self ) -> list[dict[api_policy.APIPolicy]]:
         """ Return sorted list of APIPolicy documents. """
         if self._apipolicy == None:
             self.getAPIPolicies()
         return self._listSorted( self._apipolicy )
     
-    def listBackendGroups( self ):
+    def listBackendGroups( self ) -> list[dict[backendgroup.Backendgroup]]:
         """ Return sorted list of backend groups. """
         if self._backendgroups == None:
             self.getBackendGroups()
         return self._listSorted( self._backendgroups )
     
-    def listCertificates( self ):
+    def listCertificates( self ) -> list[dict[certificate.Certificate]]:
         """ Return sorted list of SSL/TLS certificates. """
         if self._certs == None:
             self.getCertificates()
         return self._listSorted( self._certs )
     
-    def listJWKS( self ):
+    def listJWKS( self ) -> list[dict[jwks_object.JWKS]]:
         """ Return sorted list of JSON Web Token Key Sets. """
         if self._jwks == None:
             self.getJWKS()
         return self._listSorted( self._jwks )
     
-    def listOpenAPI( self ):
+    def listOpenAPI( self ) -> list[dict[openapi_object.OpenAPI]]:
         """ Return sorted list of OpenAPI documents. """
         if self._openapi == None:
             self.getOpenAPI()
         return self._listSorted( self._openapi )
     
-    def listGraphQL( self ):
+    def listGraphQL( self ) -> list[dict[graphql_object.GraphQL]]:
         """ Return sorted list of GraphQL documents. """
         if self._graphql == None:
             self.getGraphQL()
         return self._listSorted( self._graphql )
     
-    def listHostNames( self ):
+    def listHostNames( self ) -> list[dict[host.Host]]:
         """ Return sorted list of Host documents. """
         if self._hostnames == None:
             self.getHostNames()
         return self._listSorted( self._hostnames )
     
-    def listICAP( self ):
+    def listICAP( self ) -> list[dict[icap_object.ICAP]]:
         """ Return sorted list of ICAP environments. """
         if self._icap == None:
             self.getICAP()
         return self._listSorted( self._icap )
     
-    def listIPLists( self ):
+    def listIPLists( self ) -> list[dict[iplist.IPList]]:
         """ Return sorted list of IP lists. """
         if self._iplists == None:
             self.getIPLists()
         return self._listSorted( self._iplists, key='name' )
         # return sorted( self._iplists.items(), key=internal.itemgetter_lc_1 )
     
-    def listNetworkEndpoints( self ):
+    def listNetworkEndpoints( self ) -> list[dict[network_endpoint.NetworkEndpoint]]:
         """ Return sorted list of Network Endpoints. """
         if self._network_endpoints == None:
             self.getNetworkEndpoints()
         return self._listSorted( self._network_endpoints )
     
-    def listKerberos( self ):
+    def listKerberos( self ) -> list[dict[kerberos_object.Kerberos]]:
         """ Return sorted list of Network Endpoints. """
         if self._kerberos == None:
             self.getKerberos()
@@ -1167,7 +1172,7 @@ class Configuration( object ):
         self._log.warning( "Criteria search not implemented yet" )
         return None
         
-    def deleteNode( self, value ):
+    def deleteNode( self, value ) -> bool:
         """ Delete node from this configuration. """
         if not type( value ) == node.Node:
             self._log.error( "This is not a virtual host but %s" % (type(value),) )
@@ -1177,7 +1182,7 @@ class Configuration( object ):
         del self._nodes[value.id]
         return True
         
-    def deleteVHost( self, value ):
+    def deleteVHost( self, value ) -> bool:
         """ Delete virtual host from this configuration. """
         if not type( value ) == vhost.VirtualHost:
             self._log.error( "This is not a virtual host but %s" % (type(value),) )
@@ -1187,7 +1192,7 @@ class Configuration( object ):
         del self._vhosts[value.id]
         return True
         
-    def deleteMapping( self, value ):
+    def deleteMapping( self, value ) -> bool:
         """ Delete mapping from this configuration. """
         if not type( value ) == mapping.Mapping:
             self._log.error( "This is not a mapping but %s" % (type(value),) )
@@ -1197,17 +1202,17 @@ class Configuration( object ):
         del self._mappings[value.id]
         return True
         
-    def deleteAPIPolicy( self, apiPolicy ):
+    def deleteAPIPolicy( self, value ) -> bool:
         """ Delete APIPolicy document from this configuration. """
-        if not type( apiPolicy ) == api_policy.APIPolicy:
-            self._log.error( "This is not a APIPolicy document but %s" % (type(apiPolicy),) )
+        if not type( value ) == api_policy.APIPolicy:
+            self._log.error( "This is not a APIPolicy document but %s" % (type(value),) )
             return False
-        if apiPolicy.delete() == False:
+        if value.delete() == False:
             return False
-        del self._apipolicy[apiPolicy.id]
+        del self._apipolicy[value.id]
         return True
         
-    def deleteBackendGroup( self, value ):
+    def deleteBackendGroup( self, value ) -> bool:
         """ Delete backend group from this configuration. """
         if not type( value ) == backendgroup.Backendgroup:
             self._log.error( "This is not a backendgroup but %s" % (type(value),) )
@@ -1217,7 +1222,7 @@ class Configuration( object ):
         del self.values[backendgroup.id]
         return True
         
-    def deleteCertificate( self, value ):
+    def deleteCertificate( self, value ) -> bool:
         """ Delete SSL/TLS certificate from this configuration. """
         if not type( value ) == certificate.Certificate:
             self._log.error( "This is not a certificate but %s" % (type(value),) )
@@ -1227,7 +1232,7 @@ class Configuration( object ):
         del self._certs[value.id]
         return True
         
-    def deleteJWKS( self, value ):
+    def deleteJWKS( self, value ) -> bool:
         """ Delete JSON Web Token Key Set from this configuration. """
         if not type( value ) == jwks_object.JWKS:
             self._log.error( "This is not a JWKS but %s" % (type(value),) )
@@ -1237,7 +1242,7 @@ class Configuration( object ):
         del self._jwks[value.id]
         return True
         
-    def deleteOpenAPI( self, value ):
+    def deleteOpenAPI( self, value ) -> bool:
         """ Delete OpenAPI document from this configuration. """
         if not type( value ) == openapi_object.OpenAPI:
             self._log.error( "This is not a OpenAPI document but %s" % (type(value),) )
@@ -1247,7 +1252,7 @@ class Configuration( object ):
         del self._openapi[value.id]
         return True
         
-    def deleteGraphQL( self, value ):
+    def deleteGraphQL( self, value ) -> bool:
         """ Delete GraphQL document from this configuration. """
         if not type( value ) == graphql_object.GraphQL:
             self._log.error( "This is not a GraphQL document but %s" % (type(value),) )
@@ -1257,27 +1262,27 @@ class Configuration( object ):
         del self._graphql[value.id]
         return True
         
-    def deleteHostname( self, host ):
+    def deleteHostname( self, value ) -> bool:
         """ Delete Host document from this configuration. """
-        if not type( host ) == host.Host:
-            self._log.error( "This is not a Host document but %s" % (type(host),) )
+        if not type( value ) == host.Host:
+            self._log.error( "This is not a Host document but %s" % (type(value),) )
             return False
-        if host.delete() == False:
+        if value.delete() == False:
             return False
-        del self._hostnames[host.id]
+        del self._hostnames[value.id]
         return True
         
-    def deleteICAP( self, icap_env ):
+    def deleteICAP( self, value ) -> bool:
         """ Delete ICAP environment from this configuration. """
-        if not type( icap_env ) == icap_object.ICAP:
-            self._log.error( "This is not a ICAP document but %s" % (type(icap_env),) )
+        if not type( value ) == icap_object.ICAP:
+            self._log.error( "This is not a ICAP document but %s" % (type(value),) )
             return False
-        if icap_env.delete() == False:
+        if value.delete() == False:
             return False
-        del self._icap[icap_env.id]
+        del self._icap[value.id]
         return True
         
-    def deleteIPList( self, value ):
+    def deleteIPList( self, value ) -> bool:
         """ Delete IP list from this configuration. """
         if not type( value ) == iplist.IPList:
             self._log.error( "This is not a IP list but %s" % (type(value),) )
@@ -1287,24 +1292,24 @@ class Configuration( object ):
         del self._iplists[value.id]
         return True
     
-    def deleteNetworkEndpoint( self, nep ):
+    def deleteNetworkEndpoint( self, value ) -> bool:
         """ Delete NetworkEndpoint from this configuration. """
-        if not type( nep ) == network_endpoint.NetworkEndpoints:
-            self._log.error( "This is not a NetworkEndpoint but %s" % (type(nep),) )
+        if not type( value ) == network_endpoint.NetworkEndpoints:
+            self._log.error( "This is not a NetworkEndpoint but %s" % (type(value),) )
             return False
-        if nep.delete() == False:
+        if value.delete() == False:
             return False
-        del self._network_endpoints[nep.id]
+        del self._network_endpoints[value.id]
         return True
         
-    def deleteKerberos( self, krb ):
+    def deleteKerberos( self, value ) -> bool:
         """ Delete KerberosEnvironment from this configuration. """
-        if not type( krb ) == kerberos_object.Kerberos:
-            self._log.error( "This is not a KerberosEnvironment but %s" % (type(krb),) )
+        if not type( value ) == kerberos_object.Kerberos:
+            self._log.error( "This is not a KerberosEnvironment but %s" % (type(value),) )
             return False
-        if krb.delete() == False:
+        if value.delete() == False:
             return False
-        del self._kerberos[krb.id]
+        del self._kerberos[value.id]
         return True
         
     def _reset( self ):
@@ -1364,6 +1369,25 @@ class Configuration( object ):
                 #     r.append( objects[k] )
         return None
     
+    def _declarativeCreateRelationshipEntry( self, obj: baseObject.ModelElement, my_kind: str, declarative_objects: dict ):
+        # declarative_objects: { kind: [{ 'attributes': object, 'connections': {kind: [names]} }] }
+        for item_kind, item_lists_per_kind in declarative_objects.items():
+            for item in item_lists_per_kind:
+                for ref_kind, names in item['connections'].items():
+                    if ref_kind != my_kind:
+                        continue
+                    if RELATIONSHIP_ORDER[KIND2TYPENAME[item_kind]] < RELATIONSHIP_ORDER[KIND2TYPENAME[my_kind]]:
+                        # connection to config element which has already/just yet been created
+                        # 
+                        continue
+                    if obj.name in names:
+                        if not 'relationships' in item:
+                            item['relationships'] = {}
+                        try:
+                            item['relationships'][obj.getPath()]['data'].append( {'type': obj.getTypeName(), 'id': obj.id} )
+                        except KeyError:
+                            item['relationships'][obj.getPath()] = {'data':[{'type': obj.getTypeName(), 'id': obj.id}]}
+
     def _orderTypes( self ):
         self._ordered_types = {}
         idx = 0

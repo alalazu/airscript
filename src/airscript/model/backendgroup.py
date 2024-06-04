@@ -29,12 +29,12 @@ KIND = 'BackendGroup'
 typename.register( TYPENAME, KIND )
 
 
-class Backendgroup( baseObject.BaseObject ):
+class Backendgroup( baseObject.ModelElement ):
     def __init__( self, parent, obj=None, id=None ):
         self._typename = TYPENAME
         self._path = 'back-end-groups'
         self._kind = KIND
-        baseObject.BaseObject.__init__( self, parent, obj=obj, id=id )
+        baseObject.ModelElement.__init__( self, parent, obj=obj, id=id )
     
     def items( self ):
         value = super().items()
@@ -89,7 +89,7 @@ class Backendgroup( baseObject.BaseObject ):
         return self.relationshipDelete( mapping_object )
     
 
-class Backend( baseObject.BaseObject ):
+class Backend( baseObject.ModelElement ):
     def __init__( self, parent, obj=None, id=None ):
         try:
             self.id = id

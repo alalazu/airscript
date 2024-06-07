@@ -478,35 +478,6 @@ class Configuration( object ):
         #self.save()
         return True
     
-    def declarativeNode( self, declarative: dict ) -> bool:
-        # format of declarative:
-        # { 'source': path_to_config_dir, 'env': None, 'objects': { 'GatewayClusterNode': [{ 'attributes': object, 'connections': {} }] }}
-        # create node
-        if len( declarative['objects']['GatewayClusterNode'] ) != 1:
-            return False
-        item = declarative['objects']['GatewayClusterNode'][0]
-        for item_kind, item_lists_per_kind in declarative['objects'].items():
-            for item in item_lists_per_kind:
-                if not 'relationships' in item:
-                    item['relationships'] = {}
-                obj = self.createElement( 'node', data={'attributes': item['attributes']} )
-                obj.sync()
-                obj.declarativeStoreConnections( item['connections'] )
-                print( f"{item_kind}: {obj}" )
-                self._addElement2ObjectMap( obj )
-        # establish connections
-        for object_map in self.objects.values():
-            for obj in object_map.values():
-                connections = obj.declarativeGetConnections()
-                if connections:
-                    for ref_kind, names in connections.items():
-                        for name in names:
-                            ref = self._findByName( self.getObjects( lookup.get( element.LOOKUP_KIND, ref_kind )), name )
-                            # ref = self._findByName( self.getObjects( KIND2TYPENAME[ref_kind] ), name )
-                            obj.addRel( ref, load=True, backlink=True )
-        self.sync()
-        #self.save()
-    
     def validate( self ) -> dict:
         """ Retrieve validation messages for this configuration. """
         if not self.conn:

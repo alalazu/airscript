@@ -77,12 +77,6 @@ class BaseDoc( object ):
         if not env and 'default' in self._environments:
             return True
         return False
-        # if env == None or self._environments == None or env in self._environments:
-        #     return True
-        # return False
-        if self._environments == None or (env != None and env not in self._environments):
-            return False
-        return True
     
     def getSpec( self, env: str ) -> dict:
         r = self._inheritSpec( defaults.get( self._kind ), self, env )

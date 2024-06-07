@@ -60,9 +60,6 @@ class DConfig( object ):
                     else:
                         output.error( f"Invalid API: {doc['apiVersion']}" )
                         continue
-                    # if declarative_doc.isInEnv( env ):
-                    #     self._docs[fname][declarative_doc.key] = declarative_doc
-                    #     self._map[declarative_doc.key] = (fname, declarative_doc)
                     self._docs[fname][declarative_doc.key] = declarative_doc
                     self._map[declarative_doc.key] = (fname, declarative_doc)
                     self.next_id += 1
@@ -119,8 +116,6 @@ class DConfig( object ):
                 if declarative_doc.connectionsSupported():
                     if declarative_doc.connectionsReduce2Env( env, lookup ):
                         changed = True
-                    # if not declarative_doc.isConnected( env ) and not declarative_doc.isNode():       # node has no connections but we need it
-                    #     tbd.append( declarative_doc )
                     if not declarative_doc.isConnected( env ) and not declarative_doc.isNode():       # node has no connections but we need it
                         tbd.append( declarative_doc )
             if tbd != []:
@@ -136,102 +131,14 @@ class DConfig( object ):
         # create config
         object_dicts = {}
         for declarative_doc in docs:
-            #print( declarative_doc.key )
-            #pp( declarative_doc.getSpec() )
             spec = { "attributes": declarative_doc.getSpec( env ) }
             if declarative_doc.connectionsSupported():
                 spec['connections'] = declarative_doc.getConnections( env )
-            # for kind, lst in declarative_doc.getConnections( env ).items():
-            #     tn = typename.getTypename( kind )
-            #     spec['relationships'][tn] = { "data": [] }
-            #     for name in lst:
-            #         key = yaml_doc.create_key( param_set=(kind, name) )
-            #         referred = lookup[key]
-            #         spec['relationships'][tn]['data'].append( { "type": tn, "id": referred.id })
             try:
                 object_dicts[declarative_doc.getKind()].append( spec )
             except KeyError:
                 object_dicts[declarative_doc.getKind()] = [spec]
         return { 'source': self._dirname, 'env': env, 'objects': object_dicts }
-
-    # def buildNode( self, name: str, env: str=None, force: bool=False ) -> dict:
-    #     declarative_doc: yaml_doc.Doc
-    #     if not self._loaded:
-    #         self.load( env=env )
-    #     if self._loaded != "config" and not force:
-    #         output.error( "Loaded config not in format 'config' - reload or specify 'force=True'" )
-    #         return None
-    #     docs = []
-    #     lookup = {}
-    #     # build structures
-    #     for _, doc_lst in self._docs.items():
-    #         for _, declarative_doc in doc_lst.items():
-    #             if declarative_doc.isNode():
-    #                 docs.append( declarative_doc )
-    #                 lookup[declarative_doc.key] = declarative_doc
-    #     # create config
-    #     object_dicts = {}
-    #     for declarative_doc in docs:
-    #         if declarative_doc.getName() == name:
-    #             spec = { "attributes": declarative_doc.getSpec(), 'connections': {} }
-    #             try:
-    #                 object_dicts[declarative_doc.getKind()].append( spec )
-    #             except KeyError:
-    #                 object_dicts[declarative_doc.getKind()] = [spec]
-    #     return { 'source': self._dirname, 'env': env, 'objects': object_dicts }
-
-    # def buildConnections( self, env: str, force: bool=False ) -> configuration.Configuration:
-    #     if not self._loaded:
-    #         self.load( env=env )
-    #     if self._loaded != "config" and not force:
-    #         output.error( "Loaded config not in format 'config' - reload or specify 'force=True'" )
-    #         return None
-    #     docs = []
-    #     lookup = {}
-    #     # build structures
-    #     for _, doc_lst in self._docs.items():
-    #         for _, declarative_doc in doc_lst.items():
-    #             if declarative_doc.isInEnv( env ):
-    #                 docs.append( declarative_doc )
-    #                 lookup[declarative_doc.key] = declarative_doc
-    #     # remove unused documents
-    #     while True:
-    #         tbd = []
-    #         changed = False
-    #         for declarative_doc in docs:
-    #             if declarative_doc.connectionsReduce2Env( env, lookup ):
-    #                 changed = True
-    #             if not declarative_doc.isConnected( env ):
-    #                 tbd.append( declarative_doc )
-    #         if tbd != []:
-    #             for entry in tbd:
-    #                 try:
-    #                     del lookup[entry.key]
-    #                 except KeyError:
-    #                     pass
-    #                 docs.remove( entry )
-    #             changed = True
-    #         if changed == False:
-    #             break
-    #     # create config
-    #     cfg = configuration.Configuration( None, None, self._run.config )
-    #     cfg.comment = f"Declarative ({self._dirname}, env {env})"
-    #     for declarative_doc in docs:
-    #         #print( declarative_doc.key )
-    #         #pp( declarative_doc.getSpec() )
-    #         obj = cfg.addElement( declarative_doc.getKind(), id=declarative_doc.id )
-    #         spec = { "id": declarative_doc.id, "attributes": declarative_doc.getSpec() }
-    #         spec['relationships'] = {}
-    #         for kind, lst in declarative_doc.getConnections( env ).items():
-    #             tn = lookup.get( element.LOOKUP_TYPENAME, kind )
-    #             spec['relationships'][tn] = { "data": [] }
-    #             for name in lst:
-    #                 key = yaml_doc.create_key( param_set=(kind, name) )
-    #                 referred = lookup[key]
-    #                 spec['relationships'][tn]['data'].append( { "type": tn, "id": referred.id })
-    #         obj.loadData( spec )
-    #         #obj = cfg.addElement( declarative_doc.getKind(), declarative_doc.id, { "id": declarative_doc.id, "attributes": declarative_doc.getSpec() } )
-    #     return cfg
 
     def merge( self, cfg: configuration, env: str=None, force: bool=None ):
         if not self._loaded:
@@ -252,34 +159,6 @@ class DConfig( object ):
             if not item or key == 'templates':
                 continue
             self._mergeBaseDoc( item, env )
-        # for item in cfg.vhosts().values():
-        #     self._docMerge( item, env )
-        # for item in cfg.mappings().values():
-        #     self._docMerge( item, env )
-        # for item in cfg.backendgroups().values():
-        #     self._docMerge( item, env )
-        # for item in cfg.certificates().values():
-        #     self._docMerge( item, env )
-        # for item in cfg.jwks().values():
-        #     self._docMerge( item, env )
-        # for item in cfg.openapi().values():
-        #     self._docMerge( item, env )
-        # for item in cfg.graphql().values():
-        #     self._docMerge( item, env )
-        # for item in cfg.hostnames().values():
-        #     self._docMerge( item, env )
-        # for item in cfg.icap().values():
-        #     self._docMerge( item, env )
-        # for item in cfg.iplists().values():
-        #     self._docMerge( item, env )
-        # for item in cfg.kerberos().values():
-        #     self._docMerge( item, env )
-        # for item in cfg.apipolicy().values():
-        #     self._docMerge( item, env )
-        # for item in cfg.networkendpoints().values():
-        #     self._docMerge( item, env )
-        # for item in cfg.nodes().values():
-        #     self._docMerge( item, env )
 
     def findDoc( self, kind: str, name: str ) -> Union[basedoc.BaseDoc,connecteddoc.ConnectedDoc]:
         key = basedoc.create_key( param_set=(kind, name) )

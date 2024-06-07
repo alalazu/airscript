@@ -23,15 +23,26 @@ from airscript.model import configuration
 from pyAirlock.common import lookup
 
 
-TYPENAME = 'icap-environment'
-KIND = 'ICAPEnvironment'
+TYPENAME = 'log'
+KIND = 'LogSettings'
 
 lookup.registerBoth( element.LOOKUP_TYPENAME, element.LOOKUP_KIND, TYPENAME, KIND )
 
-class ICAP( element.ModelElement ):
+class LogSettings( element.BaseElement ):
     def __init__( self, parent, obj=None, id=None ):
         self._typename = TYPENAME
-        self._path = 'icap-environments'
+        self._path = 'log'
         self._kind = KIND
-        element.ModelElement.__init__( self, parent, obj=obj, id=id )
+        self._operations = "RU"
+        element.BaseElement.__init__( self, parent, obj=obj, id=id )
+    
+    def me( self ):
+        r = super().me()
+        r['level'] = self.attrs['level']
+        return r
+    
+    def values( self ):
+        tmp = super().values()
+        tmp.append( self.attrs['level'] )
+        return tmp
     

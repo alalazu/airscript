@@ -29,39 +29,40 @@ from airscript.utils import cache
 from airscript.utils import internal
 from airscript.utils import output
 
+LOOKUP_TYPENAME = "typename"
+LOOKUP_KIND = "kind"
 
-class ReadOnlyObject( object ):
+
+class BaseElement( object ):
     def __init__( self, parent, obj=None, id=None ):
         try:
             self.id = int( id )
-            # self.id = id
         except (ValueError, TypeError):
             self.id = id
         self.name = None
         self.attrs = {}
-        self.rels = {}
-        self.backlinks = {}
         self._parent = parent
         if obj:
             self.loadData( obj )
         if self.id:
             self._attrs_modified = False
-            self._rels_modified = False
         else:
             self._attrs_modified = True
-            self._rels_modified = True
         if not hasattr( self, '_typename' ):
             self._typename = ""         # overwritten by individual object types
         if not hasattr( self, '_path' ):
             self._path = ""             # overwritten by individual object types
         if not hasattr( self, '_kind' ):
             self._kind = ""             # overwritten by individual object types
+        if not hasattr( self, '_operations' ):
+            self._operations = "CRUD"   # overwritten by individual object types
         self._deleted = False
-        self._rels_deleted = {}
-        self._connections = None
         if self._parent.conn != None:
+            self._gw_api = self._parent.conn.getAPI( self._typename )
             if not cache.isCached( self._parent.conn.getName(), type( self )):
                 cache.cacheAttributeKeys( self._parent.conn.getName(), type( self ), internal.collectKeyNames( self.attrs ))
+        else:
+            self._gw_api = None
     
     def __repr__( self ):
         return str( self.me() )
@@ -76,24 +77,28 @@ class ReadOnlyObject( object ):
         return self._typename
     
     def getPath( self ):
-        return self._path
+        if self._gw_api:
+            return self._gw_api.ELEMENT_PATH
+        return ""
     
     def getKind( self ):
         return self._kind
     
     def items( self ):
         return { 'id': self.id, 'name': self.name, 
-                 'attributes': self.attrs, 
-                 'relationships': self.rels }
+                 'attributes': self.attrs }
     
     def me( self ):
         if self.name != None:
             return { 'id': self.id, 'name': self.name }
         else:
-            return { 'id': self.id, 'name': None }
+            return { 'id': self.id }
 
     def values( self ):
-        return [ self.id, self.name ]
+        if self.name != None:
+            return [ self.id, self.name ]
+        else:
+            return [ self.id ]
     
     def pretty( self ):
         pprint.pprint( self.items() )
@@ -104,55 +109,10 @@ class ReadOnlyObject( object ):
     def printAttrs( self ):
         pprint.pprint( self.attrs )
     
-    def getRels( self ):
-        return self.rels
-    
-    def printRels( self ):
-        pprint.pprint( self.rels )
-    
     def isDeleted( self ):
         return self._deleted
     
-    def filter( self, filter: list[dict] ) -> bool:
-        """ Check if object matches filter specification
-
-        Filter is a list of or'ed conditions.
-        Each condition is a dict of and'ed attribute names and matching values.
-        Name is:
-        - 'name'
-        - 'id'
-        - path to attribute, e.g. locking.application.response.compressionAllowed
-        Value is:
-        - a constant (number, boolean)
-        - a regexp (strings)
-        - None: value does not matter but attribute needs to have one
-        """
-        for condition in filter:
-            r = True
-            for name, value in condition.items():
-                match = False
-                if name == 'name':
-                    match = re.match( value, self.name )
-                elif name == 'id':
-                    match = re.match( str( value ), self.id )
-                else:
-                    attr = self.get( name )
-                    if attr == None and value == None:
-                        match = True
-                    elif isinstance( value, bool ):
-                        match = attr == value
-                    elif isinstance( value, int ) or isinstance( value, float ):
-                        match = attr == value
-                    else:
-                        match = re.match( value, attr )
-                if not match:
-                    r = False
-                    break
-            if r:
-                break
-        return r
-    
-    def loadData( self, data: dict, update: bool=False ):
+    def loadData( self, data: dict ):
         self.id = self._extractId( data )
         self.attrs = data['attributes']
         self._attrs_modified = True
@@ -160,20 +120,11 @@ class ReadOnlyObject( object ):
             self.name = self.attrs['name']
         except KeyError:
             self.name = None
-        if not update and 'relationships' in data:
-            for grp,d in data['relationships'].items():
-                if isinstance( d['data'], list ):
-                    for item in d['data']:
-                        self._addRel( item )
-                else:
-                    self._addRel( d['data'] )
-            self._rels_modified = False
 
     def delete( self ) -> bool:
+        if not 'D' in self._operations:
+            return False
         self._deleted = True
-        for type_name in self.rels:
-            while len( self.rels[type_name] ):
-                self.deleteRel( self.rels[type_name][0].reference, markOnly=False )
     
     def get( self, path: str ):
         """ Return attribute value.
@@ -181,6 +132,8 @@ class ReadOnlyObject( object ):
         'path' specifies identity of attribute. It is of the form 'locking.application.response.compressionAllowed'.
         For correct attribute paths, please refer to the Airlock Gateway REST API documentation.
         """
+        if not 'R' in self._operations:
+            return None
         array = path.split( '.' )
         attr = self._findAttribute( array )
         if attr != None:
@@ -194,6 +147,8 @@ class ReadOnlyObject( object ):
         'path' specifies identity of attribute. It is of the form 'locking.application.response.compressionAllowed'.
         For correct attribute paths, please refer to the Airlock Gateway REST API documentation.
         """
+        if not 'U' in self._operations:
+            return False
         array = path.split( '.' )
         attr = self._findAttribute( array )
         if isinstance( attr[array[-1]], list ) and not isinstance( value, list ):
@@ -209,6 +164,8 @@ class ReadOnlyObject( object ):
         'path' specifies identity of attribute. It is of the form 'locking.application.response.compressionAllowed'.
         For correct attribute paths, please refer to the Airlock Gateway REST API documentation.
         """
+        if not 'U' in self._operations:
+            return False
         array = path.split( '.' )
         attr = self._findAttribute( array )
         if not isinstance( attr[array[-1]], list ):
@@ -224,6 +181,8 @@ class ReadOnlyObject( object ):
         'path' specifies identity of attribute. It is of the form 'locking.application.response.compressionAllowed'.
         For correct attribute paths, please refer to the Airlock Gateway REST API documentation.
         """
+        if not 'U' in self._operations:
+            return False
         array = path.split( '.' )
         attr = self._findAttribute( array )
         if not isinstance( attr[array[-1]], list ):
@@ -269,69 +228,17 @@ class ReadOnlyObject( object ):
         self._attrs_modified = True
         return True
     
-    def copyRelationships( self, obj: Self ):
-        if type( obj ) != type( self ):
-            output.error( f"Type mismatch: parameter should be '{type(self)}' but is '{type(obj)}'" )
-            return False
-        if obj.rels == {} and self.rels == {}:
-            return True
-        else:
-            self.rels = self._copyDictKeys( obj.attrs )
-        self._rels_modified = True
-        return True
-    
-    def addRel( self, reference: Self, load: bool=False, backlink: bool=False ):
-        v = Relationship( reference, load )
-        type_name = reference.getTypeName()
-        if self._typename == reference._typename and backlink:
-            try:
-                self.backlinks[type_name].append( v )
-            except KeyError:
-                self.backlinks[type_name] = [ v ]
-        elif self._findRel( reference ) == None:
-            try:
-                self.rels[type_name].append( v )
-            except KeyError:
-                self.rels[type_name] = [ v ]
-            self._rels_modified = True
-
-    def deleteRel( self, reference: Self, removeBacklink: bool=True, markOnly: bool=True ) -> bool:
-        rel = self._findRel( reference )
-        if rel == None:
-            return False
-        if markOnly:
-            rel.status = 'del'
-        else:
-            self._delRel( rel )
-        self._rels_modified = True
-        if removeBacklink:
-            reference.deleteRel( self, removeBacklink=False, markOnly=markOnly )
-        return True
-    
-    def checkRel( self, reference: Self ) -> bool:
-        rel = self._findRel( reference )
-        if rel == None:
-            return False
-        return True
-
-    def listRelWithKind( self ) -> dict:
-        r = {}
-        for type_name in self.rels:
-            kind = self.rels[type_name][0].reference.getKind()
-            r[kind] = [ref.reference.name for ref in self.rels[type_name]]
-        return r
-
     def sync( self ) -> bool:
         """
         Sync changes to current object to Airlock Gateway
         - Set all attributes
-        - Link relations to object types which should already have been updated
-        - Other relations are (later) linked from the other object types back to here
 
         Returns:
         - true: success, sync'ed
         - false: delete element
         """
+        if not ('U' in self._operations or 'C' in self._operations):
+            return False
         classPointer = self._parent.conn.getAPI( self._typename )
         if classPointer == None:
             return False
@@ -340,32 +247,10 @@ class ReadOnlyObject( object ):
             return False
         if self._attrs_modified:
             if self.id:
-                self.loadData( classPointer.update( self.id, data=self.datafy() ), update=True )
+                self.loadData( classPointer.update( self.id, data=self.datafy() ))
             else:
-                self.loadData( classPointer.create( data=self.datafy() ), update=True )
+                self.loadData( classPointer.create( data=self.datafy() ))
             self._attrs_modified = False
-        if self._rels_modified:
-            for grp, lst in self.rels.items():
-                #relPointer = self._parent.conn.getAPI( grp )
-                for rel in lst:
-                    if rel.reference.isDeleted():
-                        # nohing o do if oher obje is deleed relaionship will be removed auomaiall
-                        continue
-                    if rel.status == 'del':
-                        if not classPointer.removeConnection( connection=grp, id=self.id, relation_id=rel.reference.id ):
-                            output.error( f"Sync error for {self._typename}-{self.name}: failed to remove connection to {grp}{rel.reference.name}" )
-                        entry = rel.reference._findRel( self )
-                        rel.reference.rels[self._typename].remove( entry )
-                    elif rel.status == 'new':
-                        if self._parent.elementOrderNr( self._typename ) < self._parent.elementOrderNr( grp ):
-                            continue
-                        if classPointer.addConnection( connection=grp, id=self.id, relation_id=rel.reference.id ):
-                            rel.status = ''
-                        else:
-                            output.error( f"Sync error for {self._typename}-{self.name}: failed to add connection to {grp}{rel.reference.name}" )
-                # remove deleted relationship from object
-                self.rels[grp][:] = [x for x in self.rels[grp] if x.status != 'del']
-            self._rels_modified = False
         return True
             
     def datafy( self, attrs: dict=None, addon: dict=None ) -> str:
@@ -397,20 +282,8 @@ class ReadOnlyObject( object ):
             del out['spec']['name']
         except KeyError:
             pass
-        for type_name in self.rels:
-            kind = self.rels[type_name][0].reference.getKind()
-            out['connections'][kind] = [ref.reference.name for ref in self.rels[type_name]]
         return out
     
-    def declarativeStoreConnections( self, connections: dict ):
-        self._connections = connections
-
-    def declarativeGetConnections( self ) -> dict|None:
-        return self._connections
-
-    def declarativeClearConnections( self ):
-        self._connections = None
-
 
     """
     interactions with Gateway REST API
@@ -456,30 +329,6 @@ class ReadOnlyObject( object ):
                 new[k] = None
         return new
     
-    def _addRel( self, item ):
-        type_name = item['type']
-        obj = self._parent.addElement( type_name, id=self._extractId( item ))
-        if type_name != "mapping-template":
-            obj.addRel( self, backlink=True )
-        self.addRel( obj )
-    
-    def _delRel( self, rel ):
-        type_name = rel.reference.getTypeName()
-        try:
-            self.rels[type_name].remove( rel )
-        except KeyError:
-            pass
-
-    def _findRel( self, reference ) -> dict:
-        type_name = reference.getTypeName()
-        try:
-            for rel in self.rels[type_name]:
-                if rel.reference == reference:
-                    return rel
-        except KeyError:
-            pass
-        return None
-
     def _extractId( self, data: dict ) -> int|str|None:
         try:
             return int( data['id'] )
@@ -489,53 +338,209 @@ class ReadOnlyObject( object ):
             return None
     
 
-class ModelElement( ReadOnlyObject ):
+class ModelElement( BaseElement ):
     def __init__( self, parent, obj=None, id=None ):
-        ReadOnlyObject.__init__( self, parent, obj=obj, id=id )
-        if obj == None:
-            self._shadow = None
+        self.rels = {}
+        super().__init__( parent, obj=obj, id=id )
+        if self.id:
+            self._rels_modified = False
         else:
-            self._shadow = copy.deepcopy( obj['attributes'] )
+            self._rels_modified = True
+        self._rels_deleted = {}
+        self._connections = None
     
+    def items( self ):
+        return { 'id': self.id, 'name': self.name, 
+                 'attributes': self.attrs, 
+                 'relationships': self.rels }
+    
+    def me( self ):
+        if self.name != None:
+            return { 'id': self.id, 'name': self.name }
+        else:
+            return { 'id': self.id, 'name': None }
+
+    def getRels( self ):
+        return self.rels
+    
+    def printRels( self ):
+        pprint.pprint( self.rels )
+    
+    def loadData( self, data: dict ):
+        super().loadData( data, update=True )
+    
+    def filter( self, filter: list[dict] ) -> bool:
+        """ Check if object matches filter specification
+
+        Filter is a list of or'ed conditions.
+        Each condition is a dict of and'ed attribute names and matching values.
+        Name is:
+        - 'name'
+        - 'id'
+        - path to attribute, e.g. locking.application.response.compressionAllowed
+        Value is:
+        - a constant (number, boolean)
+        - a regexp (strings)
+        - None: value does not matter but attribute needs to have one
+        """
+        for condition in filter:
+            r = True
+            for name, value in condition.items():
+                match = False
+                if name == 'name':
+                    match = re.match( value, self.name )
+                elif name == 'id':
+                    match = re.match( str( value ), self.id )
+                else:
+                    attr = self.get( name )
+                    if attr == None and value == None:
+                        match = True
+                    elif isinstance( value, bool ):
+                        match = attr == value
+                    elif isinstance( value, int ) or isinstance( value, float ):
+                        match = attr == value
+                    else:
+                        match = re.match( value, attr )
+                if not match:
+                    r = False
+                    break
+            if r:
+                break
+        return r
+    
+    def loadData( self, data: dict, update: bool=False ):
+        super().loadData( data=data )
+        if not update and 'relationships' in data:
+            for grp,d in data['relationships'].items():
+                if isinstance( d['data'], list ):
+                    for item in d['data']:
+                        self._addRel( item )
+                else:
+                    self._addRel( d['data'] )
+            self._rels_modified = False
+
+    def delete( self ) -> bool:
+        super().delete()
+        for type_name in self.rels:
+            while len( self.rels[type_name] ):
+                self.deleteRel( self.rels[type_name][0].reference, markOnly=False )
+    
+    def copyRelationships( self, obj: Self ):
+        if type( obj ) != type( self ):
+            output.error( f"Type mismatch: parameter should be '{type(self)}' but is '{type(obj)}'" )
+            return False
+        if obj.rels == {} and self.rels == {}:
+            return True
+        else:
+            self.rels = self._copyDictKeys( obj.attrs )
+        self._rels_modified = True
+        return True
+    
+    def addRel( self, reference: Self, load: bool=False, backlink: bool=False ):
+        v = Relationship( reference, load )
+        type_name = reference.getTypeName()
+        if self._typename == reference._typename and backlink:
+            # try:
+            #     self.backlinks[type_name].append( v )
+            # except KeyError:
+            #     self.backlinks[type_name] = [ v ]
+            pass
+        elif self._findRel( reference ) == None:
+            try:
+                self.rels[type_name].append( v )
+            except KeyError:
+                self.rels[type_name] = [ v ]
+            self._rels_modified = True
+
+    def deleteRel( self, reference: Self, removeBacklink: bool=True, markOnly: bool=True ) -> bool:
+        rel = self._findRel( reference )
+        if rel == None:
+            return False
+        if markOnly:
+            rel.status = 'del'
+        else:
+            self._delRel( rel )
+        self._rels_modified = True
+        if removeBacklink:
+            reference.deleteRel( self, removeBacklink=False, markOnly=markOnly )
+        return True
+    
+    def checkRel( self, reference: Self ) -> bool:
+        rel = self._findRel( reference )
+        if rel == None:
+            return False
+        return True
+
+    def listRelWithKind( self ) -> dict:
+        r = {}
+        for type_name in self.rels:
+            kind = self.rels[type_name][0].reference.getKind()
+            r[kind] = [ref.reference.name for ref in self.rels[type_name]]
+        return r
+
+    def sync( self ) -> bool:
+        """
+        Sync changes to current object to Airlock Gateway
+        - Set all attributes
+        - Link relations to object types which should already have been updated
+        - Other relations are (later) linked from the other object types back to here
+
+        Returns:
+        - true: success, sync'ed
+        - false: delete element
+        """
+        if not super().sync():
+            return
+        if self._rels_modified:
+            classPointer = self._parent.conn.getAPI( self._typename )
+            for grp, lst in self.rels.items():
+                #relPointer = self._parent.conn.getAPI( grp )
+                for rel in lst:
+                    if rel.reference.isDeleted():
+                        # nohing o do if oher obje is deleed relaionship will be removed auomaiall
+                        continue
+                    if rel.status == 'del':
+                        if not classPointer.removeConnection( connection=grp, id=self.id, relation_id=rel.reference.id ):
+                            output.error( f"Sync error for {self._typename}-{self.name}: failed to remove connection to {grp}{rel.reference.name}" )
+                        entry = rel.reference._findRel( self )
+                        rel.reference.rels[self._typename].remove( entry )
+                    elif rel.status == 'new':
+                        if self._parent.elementOrderNr( self._typename ) < self._parent.elementOrderNr( grp ):
+                            continue
+                        if classPointer.addConnection( connection=grp, id=self.id, relation_id=rel.reference.id ):
+                            rel.status = ''
+                        else:
+                            output.error( f"Sync error for {self._typename}-{self.name}: failed to add connection to {grp}{rel.reference.name}" )
+                # remove deleted relationship from object
+                self.rels[grp][:] = [x for x in self.rels[grp] if x.status != 'del']
+            self._rels_modified = False
+        return True
+            
+    def declarativeExport( self ) -> dict:
+        out = super().declarativeExport()
+        for type_name in self.rels:
+            kind = self.rels[type_name][0].reference.getKind()
+            out['connections'][kind] = [ref.reference.name for ref in self.rels[type_name]]
+        return out
+    
+    def declarativeStoreConnections( self, connections: dict ):
+        self._connections = connections
+
+    def declarativeGetConnections( self ) -> dict|None:
+        return self._connections
+
+    def declarativeClearConnections( self ):
+        self._connections = None
+
+
     """
     interactions with Gateway REST API
     """
-    # def create( self ):
-    #     resp = self._parent.conn.post( f"configuration/{self._path}", data=self.jsonize() )
-    #     if resp.status_code != 201:
-    #         output.error( f"Creation failed: {resp.status_code} ({resp.text})" )
-    #         return False
-    #     self.__init__( resp.json()['data'], self._parent.conn )
-    #     return True
-    
-    # def update( self ):
-    #     diff = self._diffDict( self.attrs, self._shadow )
-    #     resp = self._parent.conn.patch( f"configuration/{self._path}/{self.id}", data=self.jsonize( diff ) )
-    #     if resp.status_code != 200:
-    #         output.error( f"Update failed: {resp.status_code} ({resp.text})" )
-    #         return False
-    #     resp_attrs = resp.json()['data']['attributes']
-    #     diff = self._diffDict( resp_attrs, self.attrs )
-    #     if diff != {}:
-    #         output.error( "Updated objects differs from our view:" )
-    #         output.error( f"{diff}" )
-    #         return False
-    #     self.attrs = resp_attrs
-    #     self._shadow = copy.deepcopy( resp_attrs )
-    #     return True
-    
-    # def delete( self ):
-    #     resp = self._parent.conn.delete( f"configuration/{self._path}/{self.id}" )
-    #     if resp.status_code != 204:
-    #         output.error( f"Delete failed: {resp.status_code} ({resp.text})" )
-    #         return False
-    #     # compare self.attrs and resp.json['attributes']
-    #     return True
-    
     def relationshipAdd( self, rel, relPath=None ):
         obj = { 'data': { 'type': rel.getTypeName(), 'id': rel.id }}
         if relPath == None:
             relPath = self._getRelationshipPath( rel )
+        resp = self._gw_api.addConnection( relPath, self.id, rel.id )
         resp = self._parent.conn.post( f"configuration/{self._path}/{self.id}/relationship/{relPath}", data=json.dumps( obj ))
         if resp.status_code != 204:
             output.error( f"Relationship add failed: {resp.status_code} ({resp.text})" )
@@ -572,8 +577,32 @@ class ModelElement( ReadOnlyObject ):
         return method( self, obj )
     
     """
-    internal methods
+    internal methodes
     """
+    def _addRel( self, item ):
+        type_name = item['type']
+        obj = self._parent.addElement( type_name, id=self._extractId( item ))
+        if type_name != "mapping-template":
+            obj.addRel( self, backlink=True )
+        self.addRel( obj )
+    
+    def _delRel( self, rel ):
+        type_name = rel.reference.getTypeName()
+        try:
+            self.rels[type_name].remove( rel )
+        except KeyError:
+            pass
+
+    def _findRel( self, reference ) -> dict:
+        type_name = reference.getTypeName()
+        try:
+            for rel in self.rels[type_name]:
+                if rel.reference == reference:
+                    return rel
+        except KeyError:
+            pass
+        return None
+
     def _getRelationshipPath( self, rel ):
         relPath = rel.getPath()
         if relPath == 'ssl-certificates':
@@ -605,7 +634,7 @@ class ModelElement( ReadOnlyObject ):
     
 
 class Relationship( object ):
-    def __init__( self, reference: ReadOnlyObject, load: bool=False ):
+    def __init__( self, reference: ModelElement, load: bool=False ):
         self.reference = reference
         self.status = '' if load == False else 'new'
     

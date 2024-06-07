@@ -18,21 +18,22 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
-from airscript.model import baseObject
-from airscript.utils import typename
+from airscript.base import element
+from airscript.model import configuration
+from pyAirlock.common import lookup
 
 
 TYPENAME = 'mapping-template'
 KIND = 'MappingTemplate'
 
-typename.register( TYPENAME, KIND )
+lookup.registerBoth( element.LOOKUP_TYPENAME, element.LOOKUP_KIND, TYPENAME, KIND )
 
-class Template( baseObject.ReadOnlyObject ):
+class Template( element.BaseElement ):
     def __init__( self, parent, obj=None, id=None ):
         self._typename = TYPENAME
         self._path = 'templates/mappings'
         self._kind = KIND
-        baseObject.ReadOnlyObject.__init__( self, parent, obj=obj, id=id )
+        element.BaseElement.__init__( self, parent, obj=obj, id=id )
     
     def __repr__( self ):
         if self.id != None:

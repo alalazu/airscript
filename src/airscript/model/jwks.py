@@ -18,9 +18,10 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
-from airscript.utils import output, typename
-from airscript.model import baseObject
-from airscript.model import mapping
+from airscript.utils import output
+from airscript.base import element
+from airscript.model import configuration, mapping
+from pyAirlock.common import lookup
 
 
 REMOTE_TYPENAME = 'remote-json-web-key-set'
@@ -28,10 +29,10 @@ REMOTE_KIND = 'JWKSRemote'
 LOCAL_TYPENAME = 'local-json-web-key-set'
 LOCAL_KIND = 'JWKSLocal'
 
-typename.register( REMOTE_TYPENAME, REMOTE_KIND )
-typename.register( LOCAL_TYPENAME, LOCAL_KIND )
+lookup.registerBoth( element.LOOKUP_TYPENAME, element.LOOKUP_KIND, REMOTE_TYPENAME, REMOTE_KIND )
+lookup.registerBoth( element.LOOKUP_TYPENAME, element.LOOKUP_KIND, LOCAL_TYPENAME, LOCAL_KIND )
 
-class JWKS( baseObject.ModelElement ):
+class JWKS( element.ModelElement ):
     def __init__( self, parent, obj=None, id=None, remote=True ):
         self._remote = remote
         if remote:
@@ -42,7 +43,7 @@ class JWKS( baseObject.ModelElement ):
             self._typename = LOCAL_TYPENAME
             self._path = 'json-web-key-sets/locals'
             self._kind = LOCAL_KIND
-        baseObject.ModelElement.__init__( self, parent, obj=obj, id=id )
+        element.ModelElement.__init__( self, parent, obj=obj, id=id )
     
     def me( self ):
         r = super().me()

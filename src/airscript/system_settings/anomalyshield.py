@@ -19,19 +19,29 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
 from airscript.base import element
-from airscript.model import configuration
 from pyAirlock.common import lookup
 
 
-TYPENAME = 'icap-environment'
-KIND = 'ICAPEnvironment'
+TYPENAME = 'anomaly-shield'
+KIND = 'AnomalyShield'
 
 lookup.registerBoth( element.LOOKUP_TYPENAME, element.LOOKUP_KIND, TYPENAME, KIND )
 
-class ICAP( element.ModelElement ):
+class AnomalyShieldSettings( element.BaseElement ):
     def __init__( self, parent, obj=None, id=None ):
         self._typename = TYPENAME
-        self._path = 'icap-environments'
+        self._path = 'anomaly-shield'
         self._kind = KIND
-        element.ModelElement.__init__( self, parent, obj=obj, id=id )
+        self._operations = "RU"
+        element.BaseElement.__init__( self, parent, obj=obj, id=id )
+    
+    def me( self ):
+        r = super().me()
+        r['enabled'] = self.attrs['enabled']
+        return r
+    
+    def values( self ):
+        tmp = super().values()
+        tmp.append( self.attrs['enabled'] )
+        return tmp
     

@@ -18,14 +18,15 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
-from airscript.model import baseObject
+from airscript.base import element
+from airscript.model import configuration
 
 
-class Validator( baseObject.ReadOnlyObject ):
+class Validator( element.BaseElement ):
     def __init__( self, parent, obj=None, id=None ):
         self._typename = 'validator-message'
         self._path = ''
-        baseObject.ModelElement.__init__( self, parent, obj=obj, id=id )
+        element.ModelElement.__init__( self, parent, obj=obj, id=id )
     
     def me( self ):
         r = super().me()

@@ -19,66 +19,42 @@
 from typing import Self
 
 from airscript.declarative import changelog, defaults, envvalue
-from airscript.model import baseObject
+from airscript.base import element
 from pyAirlock.common import utils
 
-from pprint import pprint as pp
 
-
-def create_key( base_object: baseObject.ReadOnlyObject=None, yaml_dict: dict=None, param_set: set=None ):
+def create_key( base_object: element.BaseElement=None, yaml_dict: dict=None, param_set: set=None ):
     if base_object:
         return "{}:{}".format( base_object.getKind(), base_object.getName() )
     elif yaml_dict:
-        return "{}:{}".format( yaml_dict['kind'], yaml_dict['metadata']['name'] )
+        return "{}:{}".format( yaml_dict['kind'], utils.getDictValue( yaml_dict, 'metadata.name' ))
     else:
         return "{}:{}".format( param_set[0], param_set[1] )
 
 
-class Doc( object ):
-    def __init__( self, id: str=None, base_object: baseObject.ReadOnlyObject=None, yaml_dict: dict=None, env: str=None, dconfig=None ):
+class BaseDoc( object ):
+    def __init__( self, id: str=None, base_object: element.BaseElement=None, yaml_dict: dict=None, env: str=None, dconfig=None ):
         self.id = id
         self._base_object = base_object
         self._dconfig = dconfig
         if base_object:
             self._kind = base_object.getKind()
-            self._name = base_object.name
-            self._connections = { env if env else "default": base_object.listRelWithKind() }
-            self._environments = [ env ] if env != None else None
+            try:
+                self._name = base_object.name
+            except AttributeError:
+                self._name = None
+            self._environments = [ env ] if env != None else []
             self._parents = None
             self.key = create_key( base_object=base_object )
             self._spec = self._copyNonDefaults( base_object.getAttrs(), defaults.get( self._kind ))
         else:
             self._kind = yaml_dict['kind']
-            self._name = yaml_dict['metadata']['name']
+            self._name = utils.getDictValue( yaml_dict, 'metadata.name' )
             self._spec = self._loadYAML( yaml_dict['spec'] )
             if env:
-                base = utils.getDictValue( yaml_dict, 'metadata.connections.default', {} )
-                ovrl = utils.getDictValue( yaml_dict, f'metadata.connections.{env}', {} )
-                # try:
-                #     base  = yaml_dict['metadata']['connections']['default']
-                # except KeyError:
-                #     base = {}
-                # try:
-                #     ovrl = yaml_dict['metadata']['connections'][env]
-                # except KeyError:
-                #     ovrl = {}
-                for k,v in base.items():
-                    if not k in ovrl:
-                        ovrl[k] = v
-                self._connections = { env: ovrl }
                 self._spec = self._reduce2Env( self._spec, env )
-            else:
-                self._connections = utils.getDictValue( yaml_dict, 'metadata.connections', {} )
-            self._environments = utils.getDictValue( yaml_dict, 'metadata.environments' )
+            self._environments = utils.getDictValue( yaml_dict, 'metadata.environments', [] )
             self._parents = utils.getDictValue( yaml_dict, 'metadata.inherit', [] )
-            # try:
-            #     self._environments = yaml_dict['metadata']['environments']
-            # except KeyError:
-            #     self._environments = None
-            # try:
-            #     self._parents = yaml_dict['metadata']['inherit']
-            # except KeyError:
-            #     self._parents = None
             self.key = create_key( yaml_dict=yaml_dict )
         self._changelog = changelog.ChangeLog()
         try:
@@ -96,64 +72,41 @@ class Doc( object ):
         return self._name
     
     def isInEnv( self, env: str ) -> bool:
-        if env == None or self._environments == None or env in self._environments:
+        if env and env in self._environments:
+            return True
+        if not env and 'default' in self._environments:
             return True
         return False
-    
-    def isConnected( self, env: str=None ) -> bool:
-        try:
-            if len( self._connections['default'] ) > 0:
-                return True
-        except KeyError:
-            pass
-        if env:
-            try:
-                if len( self._connections[env] ) > 0:
-                    return True
-            except KeyError:
-                pass
-        return False
-    
-    def isNode( self ) -> bool:
-        try:
-            return self._kind == "GatewayClusterNode" and self._spec['hostName']
-        except KeyError:
+        # if env == None or self._environments == None or env in self._environments:
+        #     return True
+        # return False
+        if self._environments == None or (env != None and env not in self._environments):
             return False
+        return True
     
-    def getSpec( self ) -> dict:
-        r = self._inheritSpec( defaults.get( self._kind ), self )
-        # base = defaults.get( self._kind )
-        # if self._dconfig and self._parents:
-        #     base = self._inheritSpec( base, self )
-        #     # for name in self._parents:
-        #     #     doc = self._dconfig.findDoc( self._kind, name )
-        #     #     base = self._inheritSpec( base, doc )
-        r = self._overwriteValues( r, self._spec )
+    def getSpec( self, env: str ) -> dict:
+        r = self._inheritSpec( defaults.get( self._kind ), self, env )
+        r = self._overwriteValues( r, self._reduce2Env( self._spec, env ))
         r['name'] = self._name
         return r
-    
-    def getConnections( self, env: str=None ) -> dict:
-        try:
-            return self._connections[env]
-        except KeyError:
-            return self._connections[env][list( self._connections[env].keys() )[0]]
     
     def getParents( self ) -> list:
         return self._parents
     
+    def connectionsSupported( self ) -> bool:
+        return False
+    
     def export( self ) -> dict:
         r =  {
-                'apiVersion': 'gateway.airlock.com/v1alpha',
+                'apiVersion': 'gateway.airlock.com/settings-v1alpha',
                 'kind': self._kind,
-                'metadata': {
-                    'name': self._name,
-                },
+                'metadata': {},
                 'spec': self._dictify( self._spec ),
         }
+        if self._name:
+            r['metadata']['name'] = self._name
         if self._environments:
             r['metadata']['environments'] = self._environments
-        if self._connections:
-            r['metadata']['connections'] = self._connections
         if self._parents:
             r['metadata']['inherit'] = self._parents
         return r
@@ -179,22 +132,8 @@ class Doc( object ):
             self._changelog.add( f"metadata.environments", env )
         else:
             env = "default"
-        self._connections[env] = doc._base_object.listRelWithKind()
-        #self._parents 
-        self._changelog.replace( "metadata.connections", self._connections[env] )
         self._updateValues( self._spec, doc._spec, defaults.get( self._kind ), "", env )
 
-    def connectionsReduce2Env( self, env: str, lookup: dict ) -> bool:
-        removed = False
-        for type_name, lst in self._connections[env].items():
-            tbd = []
-            for ref in lst:
-                if not f"{type_name}:{ref}" in lookup:
-                    tbd.append( ref )
-                    removed = True
-            self._connections[env][type_name] = list( set(self._connections[env][type_name]) - set(tbd) )
-        return removed
-    
     def inheritanceTree( self, doc: Self ) -> dict:
         if doc._parents == None or doc._parents == []:
             return {}
@@ -210,6 +149,10 @@ class Doc( object ):
         return r"${" in txt
 
     def _updateValues( self, target: dict, source: dict, defaults: dict, path: str, env: str=None ):
+        """
+        Update yaml document with values of config element retrieved from Airlock Gateway (merge).
+        Values equal to those in `defaults` dict are skipped.
+        """
         for key, value in source.items():
             if not key in target:
                 # if key is not defined for target doc, use default value
@@ -250,6 +193,9 @@ class Doc( object ):
                     target[key].add( env, value )
 
     def _copyNonDefaults( self, source: dict, defaults: dict ) -> dict:
+        """
+        Copy non-default values of config element retrieved from Airlock Gateway to yaml document (initialisation)
+        """
         r = {}
         for key, value in source.items():
             if isinstance( value, dict ):
@@ -289,6 +235,9 @@ class Doc( object ):
         return r
 
     def _overwriteValues( self, base: dict, overlay: dict ) -> dict:
+        """
+        Deep merge overlay onto base dicts
+        """
         r = {}
         for key, value in base.items():
             if isinstance( value, dict ):
@@ -329,9 +278,9 @@ class Doc( object ):
         for key, value in source.items():
             if isinstance( value, envvalue.EnvValue ):
                 if key[0:7] == "##env##":
-                        if key[7:] != env:
-                            continue
-                        pass
+                    if key[7:] != env:
+                        continue
+                    pass
             elif isinstance( value, dict ):
                 r[key] = self._extractEnvValues( value, env )
             elif isinstance( value, list ):
@@ -399,6 +348,9 @@ class Doc( object ):
         return r
     
     def _reduce2Env( self, data: dict, env: str ) -> dict:
+        """
+        Reduce dict to contain on values for specific environment
+        """
         r = {}
         for key, value in data.items():
             if isinstance( value, envvalue.EnvValue ):
@@ -416,10 +368,13 @@ class Doc( object ):
                 r[key] = value
         return r
 
-    def _inheritSpec( self, base, doc: Self ) -> dict:
+    def _inheritSpec( self, base, doc: Self, env: str ) -> dict:
+        """
+        Go up inheritance tree overlaying parent values onto previous layers
+        """
         if doc._parents != None and doc._parents != []:
             for name in doc._parents:
                 parent_doc = self._dconfig.findDoc( self._kind, name )
-                base = self._inheritSpec( base, parent_doc )
-        return self._overwriteValues( base, doc._spec )
+                base = self._inheritSpec( base, parent_doc, env )
+        return self._overwriteValues( base, self._reduce2Env( doc._spec, env ))
     

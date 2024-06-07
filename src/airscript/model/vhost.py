@@ -18,21 +18,23 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
-from airscript.utils import output, typename
-from airscript.model import baseObject, certificate
+from airscript.base import element
+from airscript.utils import output
+from airscript.model import certificate, configuration
+from pyAirlock.common import lookup
 
 
 TYPENAME = 'virtual-host'
 KIND = 'VirtualHost'
 
-typename.register( TYPENAME, KIND )
+lookup.registerBoth( element.LOOKUP_TYPENAME, element.LOOKUP_KIND, TYPENAME, KIND )
 
-class VirtualHost( baseObject.ModelElement ):
+class VirtualHost( element.ModelElement ):
     def __init__( self, parent, obj=None, id=None ):
         self._typename = TYPENAME
         self._path = 'virtual-hosts'
         self._kind = KIND
-        baseObject.ModelElement.__init__( self, parent, obj=obj, id=id )
+        element.ModelElement.__init__( self, parent, obj=obj, id=id )
     
     def me( self ):
         r = super().me()

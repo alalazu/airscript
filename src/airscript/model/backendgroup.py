@@ -18,23 +18,25 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
-from airscript.utils import internal, output, typename
-from airscript.model import baseObject, mapping
+from airscript.base import element
+from airscript.utils import internal, output
+from airscript.model import configuration, mapping
+from pyAirlock.common import lookup
 
 from typing import Union
 
 TYPENAME = 'back-end-group'
 KIND = 'BackendGroup'
 
-typename.register( TYPENAME, KIND )
+lookup.registerBoth( element.LOOKUP_TYPENAME, element.LOOKUP_KIND, TYPENAME, KIND )
 
 
-class Backendgroup( baseObject.ModelElement ):
+class Backendgroup( element.ModelElement ):
     def __init__( self, parent, obj=None, id=None ):
         self._typename = TYPENAME
         self._path = 'back-end-groups'
         self._kind = KIND
-        baseObject.ModelElement.__init__( self, parent, obj=obj, id=id )
+        element.ModelElement.__init__( self, parent, obj=obj, id=id )
     
     def items( self ):
         value = super().items()
@@ -89,7 +91,7 @@ class Backendgroup( baseObject.ModelElement ):
         return self.relationshipDelete( mapping_object )
     
 
-class Backend( baseObject.ModelElement ):
+class Backend( element.ModelElement ):
     def __init__( self, parent, obj=None, id=None ):
         try:
             self.id = id

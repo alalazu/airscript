@@ -22,6 +22,8 @@ Airlock Gateway Configuration
 This class represents a complete Airlock Gateway Configuration and consists of most config items
 
 ._apipolicy - dictionary of API policies
+._anomalyshield_applications - dictionary of Anomaly Shield applications
+._anomalyshield_rules - dictionary of Anomaly Shield rules
 ._backendgroups - dictionary of backend groups
 ._certs - dictionary of SSL/TLS certificates
 ._graphql - dictionary of GraphQL documents
@@ -35,12 +37,15 @@ This class represents a complete Airlock Gateway Configuration and consists of m
 ._nodes - dictionary of nodes
 ._openapi - dictionary of OpenAPI documents
 ._templates - dictionary of mapping templates
+._trafficmatchers - dictionary of Anomaly Shield traffic matchers
+._triggers - dictionary of Anomaly Shield triggers
 ._vhosts - dictionary of virtual hosts
 """
 
 import datetime
 from typing import Union
 
+from airscript.base import element
 from airscript.model import api_policy
 from airscript.model import backendgroup
 from airscript.model import certificate
@@ -54,73 +59,101 @@ from airscript.model import mapping
 from airscript.model import network_endpoint
 from airscript.model import node
 from airscript.model import openapi as openapi_object
+from airscript.model import route
 from airscript.model import template
 from airscript.model import vhost
 from airscript.model import validator
 
-from airscript.model import baseObject, gateway
+from airscript.anomalyshield import application as anomalyshield_application
+from airscript.anomalyshield import rule as anomalyshield_rule
+from airscript.anomalyshield import traffic_matcher as anomalyshield_traffic_matcher
+from airscript.anomalyshield import trigger as anomalyshield_trigger
+
+from airscript.system_settings import anomalyshield as anomalyshield_settings
+from airscript.system_settings import default_route as default_route_settings
+from airscript.system_settings import dynamic_ip_blacklist as dynamic_ip_blacklist_settings
+from airscript.system_settings import license
+from airscript.system_settings import log as log_settings
+from airscript.system_settings import reporting as reporting_settings
+from airscript.system_settings import network_services as network_services_settings
+from airscript.system_settings import session as session_settings
+
+from airscript.model import gateway
 from pyAirlock.gateway.config_api import gateway as gw_api
+from pyAirlock.common import lookup
 
 from airscript.utils import internal
 from pyAirlock.common import log, utils
 
 
-TYPENAME2KIND = {
-    "api-policy-service": "APIPolicyService",
-    "back-end-group": "BackendGroup",
-    "ssl-certificate": "TLSCertificate",
-    "graphql-document": "GraphQLDocument",
-    "host": "Host",
-    "icap-environment": "ICAPEnvironment",
-    "ip-address-list": "IPList",
-    "local-json-web-key-set": "JWKSLocal",
-    "remote-json-web-key-set": "JWKSRemote",
-    "kerberos-environment": "KerberosEnvironment",
-    "mapping": "Mapping",
-    "allowed-network-endpoint": "AllowedNetworkEndpoint",
-    "node": "GatewayClusterNode",
-    "openapi-document": "OpenAPIDocument",
-    "mapping-template": "MappingTemplate",
-    "virtual-host": "VirtualHost",
-}
-KIND2TYPENAME = {
-    "APIPolicyService": "api-policy-service",
-    "BackendGroup": "back-end-group",
-    "TLSCertificate": "ssl-certificate",
-    "GraphQLDocument": "graphql-document",
-    "Host": "host",
-    "ICAPEnvironment": "icap-environment",
-    "IPList": "ip-address-list",
-    "JWKSLocal": "local-json-web-key-set",
-    "JWKSRemote": "remote-json-web-key-set",
-    "KerberosEnvironment": "kerberos-environment",
-    "Mapping": "mapping",
-    "AllowedNetworkEndpoint": "allowed-network-endpoint",
-    "GatewayClusterNode": "node",
-    "OpenAPIDocument": "openapi-document",
-    "MappingTemplate": "mapping-template",
-    "VirtualHost": "virtual-host",
-}
-LISTKEY2TYPENAME = {
-    "apipolicy": "api-policy-service",
-    "backendgroups": "back-end-group",
-    "certs": "ssl-certificate",
-    "graphql": "graphql-document",
-    "hostnames": "host",
-    "icap": "icap-environment",
-    "iplists": "ip-address-list",
-    "jwks": "local-json-web-key-set",
-    "jwks": "remote-json-web-key-set",
-    "kerberos": "kerberos-environment",
-    "mappings": "mapping",
-    "network_endpoints": "allowed-network-endpoint",
-    "nodes": "node",
-    "openapi": "openapi-document",
-    "templates": "mapping-template",
-    "vhosts": "virtual-host",
-}
+# TYPENAME2KIND = {
+#     "api-policy-service": "APIPolicyService",
+#     "back-end-group": "BackendGroup",
+#     "ssl-certificate": "TLSCertificate",
+#     "graphql-document": "GraphQLDocument",
+#     "host": "Host",
+#     "icap-environment": "ICAPEnvironment",
+#     "ip-address-list": "IPList",
+#     "local-json-web-key-set": "JWKSLocal",
+#     "remote-json-web-key-set": "JWKSRemote",
+#     "kerberos-environment": "KerberosEnvironment",
+#     "mapping": "Mapping",
+#     "allowed-network-endpoint": "AllowedNetworkEndpoint",
+#     "node": "GatewayClusterNode",
+#     "openapi-document": "OpenAPIDocument",
+#     "mapping-template": "MappingTemplate",
+#     "virtual-host": "VirtualHost",
+# }
+# KIND2TYPENAME = {
+#     "APIPolicyService": "api-policy-service",
+#     "BackendGroup": "back-end-group",
+#     "TLSCertificate": "ssl-certificate",
+#     "GraphQLDocument": "graphql-document",
+#     "Host": "host",
+#     "ICAPEnvironment": "icap-environment",
+#     "IPList": "ip-address-list",
+#     "JWKSLocal": "local-json-web-key-set",
+#     "JWKSRemote": "remote-json-web-key-set",
+#     "KerberosEnvironment": "kerberos-environment",
+#     "Mapping": "mapping",
+#     "AllowedNetworkEndpoint": "allowed-network-endpoint",
+#     "GatewayClusterNode": "node",
+#     "OpenAPIDocument": "openapi-document",
+#     "MappingTemplate": "mapping-template",
+#     "VirtualHost": "virtual-host",
+# }
+# LISTKEY2TYPENAME = {
+#     "apipolicy": "api-policy-service",
+#     "anomalyshield_applications": "anomaly-shield-application",
+#     "anomalyshield_rules": "anomaly-shield-rule",
+#     "backendgroups": "back-end-group",
+#     "certs": "ssl-certificate",
+#     "graphql": "graphql-document",
+#     "hostnames": "host",
+#     "icap": "icap-environment",
+#     "iplists": "ip-address-list",
+#     "jwks": "local-json-web-key-set",
+#     "jwks": "remote-json-web-key-set",
+#     "kerberos": "kerberos-environment",
+#     "mappings": "mapping",
+#     "network_endpoints": "allowed-network-endpoint",
+#     "nodes": "node",
+#     "openapi": "openapi-document",
+#     "routes": "route-ipv4-destination",
+#     "routes": "route-ipv6-destination",
+#     "routes": "route-ipv4-source",
+#     "routes": "route-ipv6-source",
+#     "templates": "mapping-template",
+#     "trafficmatchers": "anomaly-shield-traffic-matcher",
+#     "triggers": "anomaly-shield-trigger",
+#     "vhosts": "virtual-host",
+# }
 RELATIONSHIP_ORDER = {
     "api-policy-service": 1000,
+    "anomaly-shield-application": 4600,
+    "anomaly-shield-rule": 4400,
+    "anomaly-shield-traffic-macher": 4200,
+    "anomaly-shield-trigger": 4000,
     "back-end-group": 5000,
     "ssl-certificate": 2000,
     "graphql-document": 1100,
@@ -134,8 +167,12 @@ RELATIONSHIP_ORDER = {
     "allowed-network-endpoint": 2,
     "node": 3100,
     "openapi-document": 1300,
+    "route-ipv4-destination": 10,
+    "route-ipv6-destination": 11,
+    "route-ipv4-source": 12,
+    "route-ipv6-source": 13,
     "mapping-template": 0,
-    "virtual-host": 4000,
+    "virtual-host": 5200,
 }
 
 
@@ -156,6 +193,8 @@ class Configuration( object ):
             self.createdAt = now.strftime("%Y-%m-%d %H:%M:%S")
         self.conn = conn
         self._airscript_config = airscript_config
+        self.objects = {}
+        self._settings = {}
         self._loaded = False
         self._ordered_types = None
         self._log = log.Log( self.__module__ )
@@ -171,6 +210,14 @@ class Configuration( object ):
     def getObjects( self, type_name: str ) -> dict:
         if type_name == "api-policy-service":
             obj = self.objects['apipolicy']
+        elif type_name == "anomaly-shield-application":
+            obj = self.objects['anomalyshield_applications']
+        elif type_name == "anomaly-shield-rule":
+            obj = self.objects['anomalyshield_rules']
+        elif type_name == "anomaly-shield-traffic-matcher":
+            obj = self.objects['trafficmatchers']
+        elif type_name == "anomaly-shield-trigger":
+            obj = self.objects['triggers']
         elif type_name == "back-end-group":
             obj = self.objects['backendgroups']
         elif type_name == "ssl-certificate":
@@ -198,7 +245,9 @@ class Configuration( object ):
         elif type_name == "openapi-document":
             obj = self.objects['openapi']
         elif type_name == "mapping-template":
-            obj = self.objects['templates']
+            obj = self._settings['templates']
+        elif type_name in ["route-ipv4-destination", "route-ipv6-destination", "route-ipv4-source", "route-ipv6-source"]:
+            obj = self.objects['routes']
         elif type_name == "virtual-host":
             obj = self.objects['vhosts']
         return obj
@@ -206,6 +255,14 @@ class Configuration( object ):
     def getListFunc( self, type_name: str ):
         if type_name == "api-policy-service":
             func = self.apipolicy
+        elif type_name == "anomaly-shield-application":
+            func = self.anomalyshield_applications
+        elif type_name == "anomaly-shield-rule":
+            func = self.anomalyshield_rules
+        elif type_name == "anomaly-shield-traffic-matcher":
+            func = self.anomalyshield_trafficmatchers
+        elif type_name == "anomaly-shield-trigger":
+            func = self.anomalyshield_triggers
         elif type_name == "back-end-group":
             func = self.backendgroups
         elif type_name == "ssl-certificate":
@@ -234,6 +291,8 @@ class Configuration( object ):
             func = self.openapi
         elif type_name == "mapping-template":
             func = self.templates
+        elif type_name in ["route-ipv4-destination", "route-ipv6-destination", "route-ipv4-source", "route-ipv6-source"]:
+            func = self.routes
         elif type_name == "virtual-host":
             func = self.vhosts
         return func
@@ -291,6 +350,8 @@ class Configuration( object ):
             objs = [k for k,v in self.objects[element].items() if v.isDeleted()]
             for key in objs:
                 del self.objects[element][key]
+        # for settings in self._settings.values():
+        #     settings.sync()
     
     def elementOrderNr( self, type_name: str ) -> int:
         try:
@@ -299,7 +360,9 @@ class Configuration( object ):
             return 0
     
     def elementOrderList( self ):
-        return sorted( RELATIONSHIP_ORDER, key=lambda s: int(RELATIONSHIP_ORDER[s]) )
+        if not self._ordered_types:
+            self._orderTypes()
+        return sorted( self._ordered_types )
     
     def activate( self, comment: str=None ) -> bool:
         """
@@ -385,24 +448,32 @@ class Configuration( object ):
         self.comment = f"Declarative ({declarative['source']}, env {declarative['env']})"
         # create objects without connecting them
         for item_kind, item_lists_per_kind in declarative['objects'].items():
-            type_name = KIND2TYPENAME[item_kind]
+            type_name = lookup.get( element.LOOKUP_KIND, item_kind )
+            # type_name = KIND2TYPENAME[item_kind]
             for item in item_lists_per_kind:
                 if not 'relationships' in item:
                     item['relationships'] = {}
                 obj = self.createElement( type_name, data={'attributes': item['attributes']} )
                 obj.sync()
-                obj.declarativeStoreConnections( item['connections'] )
+                if isinstance( obj, element.ModelElement ):
+                    try:
+                        obj.declarativeStoreConnections( item['connections'] )
+                    except KeyError:
+                        pass
+                    self._addElement2ObjectMap( obj )
                 print( f"{item_kind}: {obj}" )
-                self._addElement2ObjectMap( obj )
         # establish connections
+        obj: element.ModelElement
         for object_map in self.objects.values():
             for obj in object_map.values():
-                connections = obj.declarativeGetConnections()
-                if connections:
-                    for ref_kind, names in connections.items():
-                        for name in names:
-                            ref = self._findByName( self.getObjects( KIND2TYPENAME[ref_kind] ), name )
-                            obj.addRel( ref, load=True, backlink=True )
+                if isinstance( obj, element.ModelElement ):
+                    connections = obj.declarativeGetConnections()
+                    if connections:
+                        for ref_kind, names in connections.items():
+                            for name in names:
+                                ref = self._findByName( self.getObjects( lookup.get( element.LOOKUP_KIND, ref_kind )), name )
+                                # ref = self._findByName( self.getObjects( KIND2TYPENAME[ref_kind] ), name )
+                                obj.addRel( ref, load=True, backlink=True )
         self.sync()
         #self.save()
         return True
@@ -430,7 +501,8 @@ class Configuration( object ):
                 if connections:
                     for ref_kind, names in connections.items():
                         for name in names:
-                            ref = self._findByName( self.getObjects( KIND2TYPENAME[ref_kind] ), name )
+                            ref = self._findByName( self.getObjects( lookup.get( element.LOOKUP_KIND, ref_kind )), name )
+                            # ref = self._findByName( self.getObjects( KIND2TYPENAME[ref_kind] ), name )
                             obj.addRel( ref, load=True, backlink=True )
         self.sync()
         #self.save()
@@ -465,29 +537,26 @@ class Configuration( object ):
                     info.append( entry )
             return { "error": error, "warning": warning, "info": info }
     
-    def nodes( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
-        return internal.itemList( self._nodes, id=id, name=name, ids=ids, filter=filter, sort=sort )
-
-    def vhosts( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
-        return internal.itemList( self._vhosts, id=id, name=name, ids=ids, filter=filter, sort=sort )
-
-    def mappings( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
-        return internal.itemList( self._mappings, id=id, name=name, ids=ids, filter=filter, sort=sort )
-
     def apipolicy( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
         return internal.itemList( self._apipolicy, id=id, name=name, ids=ids, filter=filter, sort=sort )
+
+    def anomalyshield_applications( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
+        return internal.itemList( self._anomalyshield_applications, id=id, name=name, ids=ids, filter=filter, sort=sort )
+
+    def anomalyshield_rules( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
+        return internal.itemList( self._anomalyshield_rules, id=id, name=name, ids=ids, filter=filter, sort=sort )
+
+    def anomalyshield_trafficmatcher( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
+        return internal.itemList( self._trafficmatchers, id=id, name=name, ids=ids, filter=filter, sort=sort )
+
+    def anomalyshield_triggers( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
+        return internal.itemList( self._triggers, id=id, name=name, ids=ids, filter=filter, sort=sort )
 
     def backendgroups( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
         return internal.itemList( self._backendgroups, id=id, name=name, ids=ids, filter=filter, sort=sort )
 
     def certificates( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
         return internal.itemList( self._certs, id=id, name=name, ids=ids, filter=filter, sort=sort )
-
-    def jwks( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
-        return internal.itemList( self._jwks, id=id, name=name, ids=ids, filter=filter, sort=sort )
-
-    def openapi( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
-        return internal.itemList( self._openapi, id=id, name=name, ids=ids, filter=filter, sort=sort )
 
     def graphql( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
         return internal.itemList( self._graphql, id=id, name=name, ids=ids, filter=filter, sort=sort )
@@ -501,15 +570,39 @@ class Configuration( object ):
     def iplists( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
         return internal.itemList( self._iplists, id=id, name=name, ids=ids, filter=filter, sort=sort )
 
+    def jwks( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
+        return internal.itemList( self._jwks, id=id, name=name, ids=ids, filter=filter, sort=sort )
+
     def kerberos( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
         return internal.itemList( self._kerberos, id=id, name=name, ids=ids, filter=filter, sort=sort )
+
+    def mappings( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
+        return internal.itemList( self._mappings, id=id, name=name, ids=ids, filter=filter, sort=sort )
 
     def networkendpoints( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
         return internal.itemList( self._network_endpoints, id=id, name=name, ids=ids, filter=filter, sort=sort )
 
+    def nodes( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
+        return internal.itemList( self._nodes, id=id, name=name, ids=ids, filter=filter, sort=sort )
+
+    def openapi( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
+        return internal.itemList( self._openapi, id=id, name=name, ids=ids, filter=filter, sort=sort )
+
+    def routes( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
+        return internal.itemList( self._routes, id=id, name=name, ids=ids, filter=filter, sort=sort )
+
     def templates( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
         return internal.itemList( self._templates, id=id, name=name, ids=ids, filter=filter, sort=sort )
 
+    def vhosts( self, id: Union[str|int]=None, name: str=None, ids: list[str|int]=None, filter: dict=None, sort: str=None ) -> dict:
+        return internal.itemList( self._vhosts, id=id, name=name, ids=ids, filter=filter, sort=sort )
+
+    def settings( self, subset: str=None ) -> dict:
+        try:
+            return self._settings[subset]
+        except KeyError:
+            return self._settings
+    
     def addElement( self, type_name: str, id: str=None, data: dict=None ):
         obj = self.createElement( type_name, id=id, data=data )
         return self._addElement2ObjectMap( obj )
@@ -517,6 +610,14 @@ class Configuration( object ):
     def createElement( self, type_name: str, id: str=None, data: dict=None ):
         if type_name in ["api-policy-service", "APIPolicyService"]:
             obj = self.addAPIPolicy( id=id, data=data )
+        elif type_name == "anomaly-shield-application":
+            obj = self.addAnomalyShieldApplication( id=id, data=data )
+        elif type_name == "anomaly-shield-rule":
+            obj = self.addAnomalyShieldRule( id=id, data=data )
+        elif type_name == "anomaly-shield-traffic-matcher":
+            obj = self.addAnomalyShieldTrafficMatcher( id=id, data=data )
+        elif type_name == "anomaly-shield-trigger":
+            obj = self.addAnomalyShieldTrigger( id=id, data=data )
         elif type_name in ["back-end-group", "BackendGroup"]:
             obj = self.addBackendGroup( id=id, data=data )
         elif type_name in ["ssl-certificate", "TLSCertificate"]:
@@ -543,73 +644,145 @@ class Configuration( object ):
             obj = self.addNode( id=id, data=data )
         elif type_name in ["openapi-document", "OpenAPIDocument"]:
             obj = self.addOpenAPI( id=id, data=data )
+        elif type_name == "route-ipv4-destination":
+            obj = self.addRoute( id=id, data=data, ipv4=True, source=False )
+        elif type_name == "route-ipv6-destination":
+            obj = self.addRoute( id=id, data=data, ipv4=False, source=False )
+        elif type_name == "route-ipv4-source":
+            obj = self.addRoute( id=id, data=data, ipv4=True, source=True )
+        elif type_name == "route-ipv6-source":
+            obj = self.addRoute( id=id, data=data, ipv4=False, source=True )
         elif type_name in ["mapping-template", "MappingTemplate"]:
             obj = self.addTemplate( id=id, data=data )
         elif type_name in ["virtual-host", "VirtualHost"]:
             obj = self.addVHost( id=id, data=data )
+        
+        elif type_name == anomalyshield_settings.TYPENAME:
+            obj = self.addAnomalyShieldSettings( id=id, data=data )
+        elif type_name == default_route_settings.TYPENAME:
+            obj = self.addDefaultRouteSettings( id=id, data=data )
+        elif type_name == dynamic_ip_blacklist_settings.TYPENAME:
+            obj = self.addDynamicIPBlacklistSettings( id=id, data=data )
+        elif type_name == license.TYPENAME:
+            obj = self.addLicense( id=id, data=data )
+        elif type_name == log_settings.TYPENAME:
+            obj = self.addLogSettings( id=id, data=data )
+        elif type_name == network_services_settings.TYPENAME:
+            obj = self.addNetworkServicesSettings( id=id, data=data )
+        elif type_name == reporting_settings.TYPENAME:
+            obj = self.addReportingSettings( id=id, data=data )
+        elif type_name == session_settings.TYPENAME:
+            obj = self.addSessionSettings( id=id, data=data )
+        
         return obj
 
-    def _addElement2ObjectMap( self, obj: baseObject.ModelElement ) -> baseObject.ModelElement:
-        if obj.id:
-            self.getObjects( obj.getTypeName() )[obj.id] = obj
-        else:
-            try:
-                self.getObjects( obj.getTypeName() )[None].append( obj )
-            except KeyError:
-                self.getObjects( obj.getTypeName() )[None] = [obj]
-        return obj
-    
-    def addNode( self, id: str=None, data: dict=None ) -> node.Node:
-        obj: node.Node
-        obj = None
-        if id in self._nodes:
-            obj = self._nodes[id]
+    def _settingsFindLoad( self, category: str, data: dict=None ) -> element.BaseElement:
+        obj: element.BaseElement
+        if self._settings[category]:
+            obj = self._settings[category]
             if data:
+                data['id'] = obj.id
                 obj.loadData( data=data )
-        elif data:
-            for found in self._nodes.values():
-                try:
-                    if found.name == data['attributes']['hostName'] or (not found.name and (self.conn.getHost() == data['attributes']['hostName'] or self.conn.getNodename() == data['attributes']['hostName'])):
-                        obj = found
-                        data['id'] = obj.id
-                        obj.loadData( data=data )
-                        break
-                except KeyError:
-                    pass
-        if obj == None:
-            obj = node.Node( self, obj=data, id=id )
+                return obj
+        else:
+            return None
+
+    def addAnomalyShieldSettings( self, id: str=None, data: dict=None ) -> anomalyshield_settings.AnomalyShieldSettings:
+        obj: anomalyshield_settings.AnomalyShieldSettings
+        obj = self._settingsFindLoad( 'anomalyshield', data )
+        if not obj:
+            obj = anomalyshield_settings.AnomalyShieldSettings( self, obj=data, id=id )
         return obj
 
-    def addVHost( self, id: str=None, data: dict=None ) -> vhost.VirtualHost:
-        obj: vhost.VirtualHost
-        if id in self._vhosts:
-            obj = self._vhosts[id]
+    def addDefaultRouteSettings( self, id: str=None, data: dict=None ) -> default_route_settings.DefaultRouteSettings:
+        obj: default_route_settings.DefaultRouteSettings
+        obj = self._settingsFindLoad( 'defaultroute', data )
+        if not obj:
+            obj = default_route_settings.DefaultRouteSettings( self, obj=data, id=id )
+        return obj
+
+    def addDynamicIPBlacklistSettings( self, id: str=None, data: dict=None ) -> dynamic_ip_blacklist_settings.DynamicIPBlackListSettings:
+        obj: dynamic_ip_blacklist_settings.DynamicIPBlackListSettings
+        obj = self._settingsFindLoad( 'dynamicip', data )
+        if not obj:
+            obj = dynamic_ip_blacklist_settings.DynamicIPBlackListSettings( self, obj=data, id=id )
+        return obj
+
+    def addLicense( self, id: str=None, data: dict=None ) -> license.License:
+        obj: license.License
+        obj = self._settingsFindLoad( 'license', data )
+        if not obj:
+            obj = license.License( self, obj=data, id=id )
+        return obj
+
+    def addLogSettings( self, id: str=None, data: dict=None ) -> log_settings.LogSettings:
+        obj: log_settings.LogSettings
+        obj = self._settingsFindLoad( 'log', data )
+        if not obj:
+            obj = log_settings.LogSettings( self, obj=data, id=id )
+        return obj
+
+    def addNetworkServicesSettings( self, id: str=None, data: dict=None ) -> network_services_settings.NetworkServicesSettings:
+        obj: network_services_settings.NetworkServicesSettings
+        obj = self._settingsFindLoad( 'network_services', data )
+        if not obj:
+            obj = network_services_settings.NetworkServicesSettings( self, obj=data, id=id )
+        return obj
+
+    def addReportingSettings( self, id: str=None, data: dict=None ) -> reporting_settings.ReportingSettings:
+        obj: reporting_settings.ReportingSettings
+        obj = self._settingsFindLoad( 'reporting', data )
+        if not obj:
+            obj = reporting_settings.ReportingSettings( self, obj=data, id=id )
+        return obj
+
+    def addSessionSettings( self, id: str=None, data: dict=None ) -> session_settings.SessionSettings:
+        obj: session_settings.SessionSettings
+        obj = self._settingsFindLoad( 'session', data )
+        if not obj:
+            obj = session_settings.SessionSettings( self, obj=data, id=id )
+        return obj
+
+    def addAnomalyShieldApplication( self, id: str=None, data: dict=None ) -> anomalyshield_application.AnomalyShieldApplication:
+        obj: anomalyshield_application.AnomalyShieldApplication
+        if id in self._apipolicy:
+            obj = self._apipolicy[id]
             if data:
                 obj.loadData( data=data )
         else:
-            obj = vhost.VirtualHost( self, obj=data, id=id )
+            obj = anomalyshield_application.AnomalyShieldApplication( self, obj=data, id=id )
         return obj
-    
-    def addMapping( self, id: str=None, data: dict=None ) -> mapping.Mapping:
-        obj: mapping.Mapping
-        if id in self._mappings:
-            obj = self._mappings[id]
+
+    def addAnomalyShieldRule( self, id: str=None, data: dict=None ) -> anomalyshield_rule.AnomalyShieldRule:
+        obj: anomalyshield_rule.AnomalyShieldRule
+        if id in self._apipolicy:
+            obj = self._apipolicy[id]
             if data:
                 obj.loadData( data=data )
         else:
-            obj = mapping.Mapping( self, obj=data, id=id )
+            obj = anomalyshield_rule.AnomalyShieldRule( self, obj=data, id=id )
         return obj
-    
-    def addTemplate( self, id: str=None, data: dict=None ) -> template.Template:
-        obj: template.Template
-        if id in self._templates:
-            obj = self._templates[id]
+
+    def addAnomalyShieldTrafficMatcher( self, id: str=None, data: dict=None ) -> anomalyshield_traffic_matcher.AnomalyShieldTrafficMatcher:
+        obj: anomalyshield_traffic_matcher.AnomalyShieldTrafficMatcher
+        if id in self._apipolicy:
+            obj = self._apipolicy[id]
             if data:
                 obj.loadData( data=data )
         else:
-            obj = template.Template( self, obj=data, id=id )
+            obj = anomalyshield_traffic_matcher.AnomalyShieldTrafficMatcher( self, obj=data, id=id )
         return obj
-    
+
+    def addAnomalyShieldTrigger( self, id: str=None, data: dict=None ) -> anomalyshield_trigger.AnomalyShieldTrigger:
+        obj: anomalyshield_trigger.AnomalyShieldTrigger
+        if id in self._apipolicy:
+            obj = self._apipolicy[id]
+            if data:
+                obj.loadData( data=data )
+        else:
+            obj = anomalyshield_trigger.AnomalyShieldTrigger( self, obj=data, id=id )
+        return obj
+
     def addAPIPolicy( self, id: str=None, data: dict=None ) -> api_policy.APIPolicy:
         obj: api_policy.APIPolicy
         if id in self._apipolicy:
@@ -638,26 +811,6 @@ class Configuration( object ):
                 obj.loadData( data=data )
         else:
             obj = certificate.Certificate( self, obj=data, id=id )
-        return obj
-    
-    def addJWKS( self, id: str=None, data: dict=None, remote: bool=True ) -> jwks_object.JWKS:
-        obj: jwks_object.JWKS
-        if id in self._jwks:
-            obj = self._jwks[id]
-            if data:
-                obj.loadData( data=data )
-        else:
-            obj = jwks_object.JWKS( self, obj=data, id=id, remote=remote )
-        return obj
-    
-    def addOpenAPI( self, id: str=None, data: dict=None ) -> openapi_object.OpenAPI:
-        obj: openapi_object.OpenAPI
-        if id in self._openapi:
-            obj = self._openapi[id]
-            if data:
-                obj.loadData( data=data )
-        else:
-            obj = openapi_object.OpenAPI( self, obj=data, id=id )
         return obj
     
     def addGraphQL( self, id: str=None, data: dict=None ) -> graphql_object.GraphQL:
@@ -700,14 +853,14 @@ class Configuration( object ):
             obj = iplist.IPList( self, obj=data, id=id )
         return obj
     
-    def addNetworkEndpoint( self, id: str=None, data: dict=None ) -> network_endpoint.NetworkEndpoint:
-        obj: network_endpoint.NetworkEndpoint
-        if id in self._network_endpoints:
-            obj = self._network_endpoints[id]
+    def addJWKS( self, id: str=None, data: dict=None, remote: bool=True ) -> jwks_object.JWKS:
+        obj: jwks_object.JWKS
+        if id in self._jwks:
+            obj = self._jwks[id]
             if data:
                 obj.loadData( data=data )
         else:
-            obj = network_endpoint.NetworkEndpoint( self, obj=data, id=id )
+            obj = jwks_object.JWKS( self, obj=data, id=id, remote=remote )
         return obj
     
     def addKerberos( self, id: str=None, data: dict=None ) -> kerberos_object.Kerberos:
@@ -720,59 +873,86 @@ class Configuration( object ):
             obj = kerberos_object.Kerberos( self, obj=data, id=id )
         return obj
     
-    def getNodes( self ) -> Union[list[dict], None]:
-        """
-        Use REST API to fetch all nodes of this configuration from Airlock Gateway.
-        
-        This function must be executed before ._nodes is filled-in and you can modify the settings.
-        """
-        if self._loaded == False:
-            if self.load() == False:
-                return None
-        for entry in self.conn.node.read():
-            self._addElement2ObjectMap( self.addNode( id=entry['id'], data=entry ))
-        return self._nodes
+    def addMapping( self, id: str=None, data: dict=None ) -> mapping.Mapping:
+        obj: mapping.Mapping
+        if id in self._mappings:
+            obj = self._mappings[id]
+            if data:
+                obj.loadData( data=data )
+        else:
+            obj = mapping.Mapping( self, obj=data, id=id )
+        return obj
     
-    def getVHosts( self ) -> Union[list[dict], None]:
-        """
-        Use REST API to fetch all virtual hosts of this configuration from Airlock Gateway.
-        
-        This function must be executed before ._vhosts is filled-in and you can modify the settings.
-        """
-        if self._loaded == False:
-            if self.load() == False:
-                return None
-        for entry in self.conn.vhost.read():
-            self._addElement2ObjectMap( self.addVHost( id=entry['id'], data=entry ))
-        return self.vhosts()
+    def addNetworkEndpoint( self, id: str=None, data: dict=None ) -> network_endpoint.NetworkEndpoint:
+        obj: network_endpoint.NetworkEndpoint
+        if id in self._network_endpoints:
+            obj = self._network_endpoints[id]
+            if data:
+                obj.loadData( data=data )
+        else:
+            obj = network_endpoint.NetworkEndpoint( self, obj=data, id=id )
+        return obj
     
-    def getMappings( self ) -> Union[list[dict], None]:
-        """
-        Use REST API to fetch all mappings of this configuration from Airlock Gateway.
-        
-        This function must be executed before ._mappings is filled-in and you can modify the settings.
-        """
-        if self._loaded == False:
-            if self.load() == False:
-                return None
-        for entry in self.conn.mapping.read():
-            self._addElement2ObjectMap( self.addMapping( id=entry['id'], data=entry ))
-        return self._mappings
+    def addNode( self, id: str=None, data: dict=None ) -> node.Node:
+        obj: node.Node
+        obj = None
+        if id in self._nodes:
+            obj = self._nodes[id]
+            if data:
+                obj.loadData( data=data )
+        elif data:
+            for found in self._nodes.values():
+                try:
+                    if found.name == data['attributes']['hostName'] or (not found.name and (self.conn.getHost() == data['attributes']['hostName'] or self.conn.getNodename() == data['attributes']['hostName'])):
+                        obj = found
+                        data['id'] = obj.id
+                        obj.loadData( data=data )
+                        break
+                except KeyError:
+                    pass
+        if obj == None:
+            obj = node.Node( self, obj=data, id=id )
+        return obj
+
+    def addOpenAPI( self, id: str=None, data: dict=None ) -> openapi_object.OpenAPI:
+        obj: openapi_object.OpenAPI
+        if id in self._openapi:
+            obj = self._openapi[id]
+            if data:
+                obj.loadData( data=data )
+        else:
+            obj = openapi_object.OpenAPI( self, obj=data, id=id )
+        return obj
     
-    def getTemplates( self ) -> Union[list[dict], None]:
-        """
-        Use REST API to fetch all mapping templates of this configuration from Airlock Gateway.
-        
-        This function must be executed before ._templates is filled-in.
-        """
-        if self._loaded == False:
-            if self.load() == False:
-                return None
-        resp = self.conn.get( "/configuration/templates/mappings" )
-        if resp.text != "":
-            for entry in resp.json()['data']:
-                self._addElement2ObjectMap( self.addTemplate( id=entry['id'], data=entry ))
-        return self._templates
+    def addRoute( self, id: str=None, data: dict=None, ipv4: bool=True, source: bool=True ) -> route.Route:
+        obj: jwks_object.JWKS
+        if id in self._jwks:
+            obj = self._jwks[id]
+            if data:
+                obj.loadData( data=data )
+        else:
+            obj = route.Route( self, obj=data, id=id, ipv4=ipv4, source=source )
+        return obj
+    
+    def addTemplate( self, id: str=None, data: dict=None ) -> template.Template:
+        obj: template.Template
+        if id in self._templates:
+            obj = self._templates[id]
+            if data:
+                obj.loadData( data=data )
+        else:
+            obj = template.Template( self, obj=data, id=id )
+        return obj
+    
+    def addVHost( self, id: str=None, data: dict=None ) -> vhost.VirtualHost:
+        obj: vhost.VirtualHost
+        if id in self._vhosts:
+            obj = self._vhosts[id]
+            if data:
+                obj.loadData( data=data )
+        else:
+            obj = vhost.VirtualHost( self, obj=data, id=id )
+        return obj
     
     def getAPIPolicies( self ) -> Union[list[dict], None]:
         """
@@ -786,6 +966,58 @@ class Configuration( object ):
         for entry in self.conn.api_policy.read():
             self._addElement2ObjectMap( self.addAPIPolicy( id=entry['id'], data=entry ))
         return self._apipolicy
+    
+    def getAnomalyShieldApplications( self ) -> Union[list[dict], None]:
+        """
+        Use REST API to fetch all Anomaly Shield applications of this configuration from Airlock Gateway.
+        
+        This function must be executed before ._anomalyshield_applications is filled-in and you can modify the settings.
+        """
+        if self._loaded == False:
+            if self.load() == False:
+                return None
+        for entry in self.conn.anomalyshield_application.read():
+            self._addElement2ObjectMap( self.addAnomalyShieldApplication( id=entry['id'], data=entry ))
+        return self._anomalyshield_applications
+    
+    def getAnomalyShieldRules( self ) -> Union[list[dict], None]:
+        """
+        Use REST API to fetch all Anomaly Shield rules of this configuration from Airlock Gateway.
+        
+        This function must be executed before ._anomalyshield_rules is filled-in and you can modify the settings.
+        """
+        if self._loaded == False:
+            if self.load() == False:
+                return None
+        for entry in self.conn.anomalyshield_rule.read():
+            self._addElement2ObjectMap( self.addAnomalyShieldRule( id=entry['id'], data=entry ))
+        return self._anomalyshield_rules
+    
+    def getAnomalyShieldTrafficMatchers( self ) -> Union[list[dict], None]:
+        """
+        Use REST API to fetch all Anomaly Shield traffic matchers of this configuration from Airlock Gateway.
+        
+        This function must be executed before ._trafficmatchers is filled-in and you can modify the settings.
+        """
+        if self._loaded == False:
+            if self.load() == False:
+                return None
+        for entry in self.conn.anomalyshield_trafficmatcher.read():
+            self._addElement2ObjectMap( self.addAnomalyShieldTrafficMatcher( id=entry['id'], data=entry ))
+        return self._trafficmatchers
+    
+    def getAnomalyShieldTriggers( self ) -> Union[list[dict], None]:
+        """
+        Use REST API to fetch all Anomaly Shield triggers of this configuration from Airlock Gateway.
+        
+        This function must be executed before ._triggers is filled-in and you can modify the settings.
+        """
+        if self._loaded == False:
+            if self.load() == False:
+                return None
+        for entry in self.conn.anomalyshield_trigger.read():
+            self._addElement2ObjectMap( self.addAnomalyShieldTrigger( id=entry['id'], data=entry ))
+        return self._triggers
     
     def getBackendGroups( self ) -> Union[list[dict], None]:
         """
@@ -812,34 +1044,6 @@ class Configuration( object ):
         for entry in self.conn.certificate.read():
             self._addElement2ObjectMap( self.addCertificate( id=entry['id'], data=entry ))
         return self._certs
-    
-    def getJWKS( self ) -> Union[list[dict], None]:
-        """
-        Use REST API to fetch all JWKS definitions of this configuration from Airlock Gateway.
-        
-        This function must be executed before ._jwks is filled-in and you can modify the settings.
-        """
-        if self._loaded == False:
-            if self.load() == False:
-                return None
-        for entry in self.conn.jwks_local.read():
-            self._addElement2ObjectMap( self.addJWKS( id=entry['id'], data=entry, remote=False ))
-        for entry in self.conn.jwks_remote.read():
-            self._addElement2ObjectMap( self.addJWKS( id=entry['id'], data=entry ))
-        return self._jwks
-    
-    def getOpenAPI( self ) -> Union[list[dict], None]:
-        """
-        Use REST API to fetch all OpenAPI documents of this configuration from Airlock Gateway.
-        
-        This function must be executed before ._openapi is filled-in and you can modify the settings.
-        """
-        if self._loaded == False:
-            if self.load() == False:
-                return None
-        for entry in self.conn.openapi.read():
-            self._addElement2ObjectMap( self.addOpenAPI( id=entry['id'], data=entry ))
-        return self._openapi
     
     def getGraphQL( self ) -> Union[list[dict], None]:
         """
@@ -893,18 +1097,20 @@ class Configuration( object ):
             self._addElement2ObjectMap( self.addIPList( id=entry['id'], data=entry ))
         return self._iplists
     
-    def getNetworkEndpoints( self ) -> Union[list[dict], None]:
+    def getJWKS( self ) -> Union[list[dict], None]:
         """
-        Use REST API to fetch all NetworkEndpoint documents of this configuration from Airlock Gateway.
+        Use REST API to fetch all JWKS definitions of this configuration from Airlock Gateway.
         
-        This function must be executed before ._network_endpoints is filled-in and you can modify the settings.
+        This function must be executed before ._jwks is filled-in and you can modify the settings.
         """
         if self._loaded == False:
             if self.load() == False:
                 return None
-        for entry in self.conn.network_endpoint.read():
-            self._addElement2ObjectMap( self.addNetworkEndpoint( id=entry['id'], data=entry ))
-        return self._network_endpoints
+        for entry in self.conn.jwks_local.read():
+            self._addElement2ObjectMap( self.addJWKS( id=entry['id'], data=entry, remote=False ))
+        for entry in self.conn.jwks_remote.read():
+            self._addElement2ObjectMap( self.addJWKS( id=entry['id'], data=entry ))
+        return self._jwks
     
     def getKerberos( self ) -> Union[list[dict], None]:
         """
@@ -919,6 +1125,196 @@ class Configuration( object ):
             self._addElement2ObjectMap( self.addKerberos( id=entry['id'], data=entry ))
         return self._kerberos
     
+    def getMappings( self ) -> Union[list[dict], None]:
+        """
+        Use REST API to fetch all mappings of this configuration from Airlock Gateway.
+        
+        This function must be executed before ._mappings is filled-in and you can modify the settings.
+        """
+        if self._loaded == False:
+            if self.load() == False:
+                return None
+        for entry in self.conn.mapping.read():
+            self._addElement2ObjectMap( self.addMapping( id=entry['id'], data=entry ))
+        return self._mappings
+    
+    def getNetworkEndpoints( self ) -> Union[list[dict], None]:
+        """
+        Use REST API to fetch all NetworkEndpoint documents of this configuration from Airlock Gateway.
+        
+        This function must be executed before ._network_endpoints is filled-in and you can modify the settings.
+        """
+        if self._loaded == False:
+            if self.load() == False:
+                return None
+        for entry in self.conn.network_endpoint.read():
+            self._addElement2ObjectMap( self.addNetworkEndpoint( id=entry['id'], data=entry ))
+        return self._network_endpoints
+    
+    def getNodes( self ) -> Union[list[dict], None]:
+        """
+        Use REST API to fetch all nodes of this configuration from Airlock Gateway.
+        
+        This function must be executed before ._nodes is filled-in and you can modify the settings.
+        """
+        if self._loaded == False:
+            if self.load() == False:
+                return None
+        for entry in self.conn.node.read():
+            self._addElement2ObjectMap( self.addNode( id=entry['id'], data=entry ))
+        return self._nodes
+    
+    def getOpenAPI( self ) -> Union[list[dict], None]:
+        """
+        Use REST API to fetch all OpenAPI documents of this configuration from Airlock Gateway.
+        
+        This function must be executed before ._openapi is filled-in and you can modify the settings.
+        """
+        if self._loaded == False:
+            if self.load() == False:
+                return None
+        for entry in self.conn.openapi.read():
+            self._addElement2ObjectMap( self.addOpenAPI( id=entry['id'], data=entry ))
+        return self._openapi
+    
+    def getRoutes( self ) -> Union[list[dict], None]:
+        """
+        Use REST API to fetch all route definitions of this configuration from Airlock Gateway.
+        
+        This function must be executed before ._routes is filled-in and you can modify the settings.
+        """
+        if self._loaded == False:
+            if self.load() == False:
+                return None
+        for entry in self.conn.routes_ipv4_destination.read():
+            self._addElement2ObjectMap( self.addRoute( id=entry['id'], data=entry, ipv4=True, source=False ))
+        for entry in self.conn.routes_ipv6_destination.read():
+            self._addElement2ObjectMap( self.addRoute( id=entry['id'], data=entry, ipv4=False, source=False ))
+        for entry in self.conn.routes_ipv4_source.read():
+            self._addElement2ObjectMap( self.addRoute( id=entry['id'], data=entry, ipv4=True, source=True ))
+        for entry in self.conn.routes_ipv6_source.read():
+            self._addElement2ObjectMap( self.addRoute( id=entry['id'], data=entry, ipv4=False, source=True ))
+        return self._routes
+    
+    def getTemplates( self ) -> Union[list[dict], None]:
+        """
+        Use REST API to fetch all mapping templates of this configuration from Airlock Gateway.
+        
+        This function must be executed before ._templates is filled-in.
+        """
+        if self._loaded == False:
+            if self.load() == False:
+                return None
+        resp = self.conn.get( "/configuration/templates/mappings" )
+        if resp.text != "":
+            for entry in resp.json()['data']:
+                self._addElement2ObjectMap( self.addTemplate( id=entry['id'], data=entry ))
+        return self._templates
+    
+    def getVHosts( self ) -> Union[list[dict], None]:
+        """
+        Use REST API to fetch all virtual hosts of this configuration from Airlock Gateway.
+        
+        This function must be executed before ._vhosts is filled-in and you can modify the settings.
+        """
+        if self._loaded == False:
+            if self.load() == False:
+                return None
+        for entry in self.conn.vhost.read():
+            self._addElement2ObjectMap( self.addVHost( id=entry['id'], data=entry ))
+        return self.vhosts()
+    
+    def getSettingsLicense( self ) -> Union[dict, None]:
+        """
+        Use REST API to fetch licesne from Airlock Gateway.
+        
+        This function must be executed before .settings['license'] is filled-in and you can modify the settings.
+        """
+        if self._loaded == False:
+            if self.load() == False:
+                return None
+        entry = self.conn.license.read()
+        self._settings['license'] = license.License( self, obj=entry )
+        return self._settings['license']
+    
+    def getSettingsAnomalyShield( self ) -> Union[dict, None]:
+        """
+        Use REST API to fetch licesne from Airlock Gateway.
+        
+        This function must be executed before .settings['anomalyshield'] is filled-in and you can modify the settings.
+        """
+        if self._loaded == False:
+            if self.load() == False:
+                return None
+        entry = self.conn.settings_anomalyshield.read()
+        self._settings['anomalyshield'] = anomalyshield_settings.AnomalyShieldSettings( self, obj=entry )
+        return self._settings['anomalyshield']
+    
+    def getSettingsLog( self ) -> Union[dict, None]:
+        """
+        Use REST API to fetch licesne from Airlock Gateway.
+        
+        This function must be executed before .settings['log'] is filled-in and you can modify the settings.
+        """
+        if self._loaded == False:
+            if self.load() == False:
+                return None
+        entry = self.conn.settings_log.read()
+        self._settings['log'] = log_settings.LogSettings( self, obj=entry )
+        return self._settings['log']
+    
+    def getSettingsNetworkServices( self ) -> Union[dict, None]:
+        """
+        Use REST API to fetch licesne from Airlock Gateway.
+        
+        This function must be executed before .settings['network_services'] is filled-in and you can modify the settings.
+        """
+        if self._loaded == False:
+            if self.load() == False:
+                return None
+        entry = self.conn.settings_network_services.read()
+        self._settings['network_services'] = network_services_settings.NetworkServicesSettings( self, obj=entry )
+        return self._settings['network_services']
+    
+    def getSettingsReporting( self ) -> Union[dict, None]:
+        """
+        Use REST API to fetch licesne from Airlock Gateway.
+        
+        This function must be executed before .settings['reporting'] is filled-in and you can modify the settings.
+        """
+        if self._loaded == False:
+            if self.load() == False:
+                return None
+        entry = self.conn.settings_reporting.read()
+        self._settings['reporting'] = reporting_settings.ReportingSettings( self, obj=entry )
+        return self._settings['reporting']
+    
+    def getSettingsRoute( self ) -> Union[dict, None]:
+        """
+        Use REST API to fetch licesne from Airlock Gateway.
+        
+        This function must be executed before .settings['defaultroute'] is filled-in and you can modify the settings.
+        """
+        if self._loaded == False:
+            if self.load() == False:
+                return None
+        entry = self.conn.settings_route.read()
+        self._settings['defaultroute'] = default_route_settings.DefaultRouteSettings( self, obj=entry )
+        return self._settings['defaultroute']
+    
+    def getSettingsSession( self ) -> Union[dict, None]:
+        """
+        Use REST API to fetch licesne from Airlock Gateway.
+        
+        This function must be executed before .settings['session'] is filled-in and you can modify the settings.
+        """
+        if self._loaded == False:
+            if self.load() == False:
+                return None
+        entry = self.conn.settings_session.read()
+        self._settings['session'] = session_settings.SessionSettings( self, obj=entry )
+        return self._settings['session']
+    
     def getAll( self ):
         """
         Use REST API to fetch most configuration items from Airlock Gateway
@@ -927,6 +1323,14 @@ class Configuration( object ):
         self.getNodes()
         self._log.verbose( "- API policies" )
         self.getAPIPolicies()
+        self._log.verbose( "- Anomaly Shield applications" )
+        self.getAnomalyShieldApplications()
+        self._log.verbose( "- Anomaly Shield rules" )
+        self.getAnomalyShieldRules()
+        self._log.verbose( "- Anomaly Shield traffic matchers" )
+        self.getAnomalyShieldTrafficMatchers()
+        self._log.verbose( "- Anomaly Shield triggers" )
+        self.getAnomalyShieldTriggers()
         self._log.verbose( "- Backend groups" )
         self.getBackendGroups()
         self._log.verbose( "- Certificates" )
@@ -949,8 +1353,24 @@ class Configuration( object ):
         self.getNetworkEndpoints()
         self._log.verbose( "- OpenAPI" )
         self.getOpenAPI()
+        self._log.verbose( "- Routes" )
+        self.getRoutes()
         self._log.verbose( "- Virtual hosts" )
         self.getVHosts()
+        self._log.verbose( "- Settings: license" )
+        self.getSettingsLicense()
+        self._log.verbose( "- Settings: anomaly shield" )
+        self.getSettingsAnomalyShield()
+        self._log.verbose( "- Settings: log" )
+        self.getSettingsLog()
+        self._log.verbose( "- Settings: network services" )
+        self.getSettingsNetworkServices()
+        self._log.verbose( "- Settings: reporting" )
+        self.getSettingsReporting()
+        self._log.verbose( "- Settings: (default) route" )
+        self.getSettingsRoute()
+        self._log.verbose( "- Settings: session" )
+        self.getSettingsSession()
     
     def mappingFromTemplate( self, template ) -> bool:
         """ Create new mapping from template. """
@@ -1100,24 +1520,6 @@ class Configuration( object ):
         #     i += 1
         # return r
     
-    def findVHost( self, name, criteria=None ):
-        """ Return list of virtual hosts whose name contains 'name'. """
-        if self._vhosts == None:
-            self.getVHosts()
-        if criteria == None:
-            return [ self._findByName( self._vhosts, name ) ]
-        self._log.warning( "Criteria search not implemented yet" )
-        return None
-        
-    def findMapping( self, name, criteria=None ):
-        """ Return list of mappings whose name contains 'name'. """
-        if self._mappings == None:
-            self.getMappings()
-        if criteria == None:
-            return [ self._findByName( self._mappings, name ) ]
-        self._log.warning( "Criteria search not implemented yet" )
-        return None
-        
     def findBackendgroup( self, name, criteria=None ):
         """ Return list of backend groups whose name contains 'name'. """
         if self._backendgroups == None:
@@ -1136,24 +1538,6 @@ class Configuration( object ):
         self._log.warning( "Criteria search not implemented yet" )
         return None
         
-    def findJWKS( self, name, criteria=None ):
-        """ Return list of JSON Web Token Key Sets whose name contains 'name'. """
-        if self._jwks == None:
-            self.getJWKS()
-        if criteria == None:
-            return [ self._findByName( self._jwks, name ) ]
-        self._log.warning( "Criteria search not implemented yet" )
-        return None
-        
-    def findOpenAPI( self, name, criteria=None ):
-        """ Return list of OpenAPI documents whose name contains 'name'. """
-        if self._openapi == None:
-            self.getOpenAPI()
-        if criteria == None:
-            return [ self._findByName( self._openapi, name ) ]
-        self._log.warning( "Criteria search not implemented yet" )
-        return None
-        
     def findGraphQL( self, name, criteria=None ):
         """ Return list of GraphQL documents whose name contains 'name'. """
         if self._graphql == None:
@@ -1169,6 +1553,42 @@ class Configuration( object ):
             self.getIPLists()
         if criteria == None:
             return [ self._findByName( self._iplists, name ) ]
+        self._log.warning( "Criteria search not implemented yet" )
+        return None
+        
+    def findJWKS( self, name, criteria=None ):
+        """ Return list of JSON Web Token Key Sets whose name contains 'name'. """
+        if self._jwks == None:
+            self.getJWKS()
+        if criteria == None:
+            return [ self._findByName( self._jwks, name ) ]
+        self._log.warning( "Criteria search not implemented yet" )
+        return None
+        
+    def findMapping( self, name, criteria=None ):
+        """ Return list of mappings whose name contains 'name'. """
+        if self._mappings == None:
+            self.getMappings()
+        if criteria == None:
+            return [ self._findByName( self._mappings, name ) ]
+        self._log.warning( "Criteria search not implemented yet" )
+        return None
+        
+    def findOpenAPI( self, name, criteria=None ):
+        """ Return list of OpenAPI documents whose name contains 'name'. """
+        if self._openapi == None:
+            self.getOpenAPI()
+        if criteria == None:
+            return [ self._findByName( self._openapi, name ) ]
+        self._log.warning( "Criteria search not implemented yet" )
+        return None
+        
+    def findVHost( self, name, criteria=None ):
+        """ Return list of virtual hosts whose name contains 'name'. """
+        if self._vhosts == None:
+            self.getVHosts()
+        if criteria == None:
+            return [ self._findByName( self._vhosts, name ) ]
         self._log.warning( "Criteria search not implemented yet" )
         return None
         
@@ -1315,6 +1735,8 @@ class Configuration( object ):
     def _reset( self ):
         self.objects = {
             'apipolicy': {},
+            'anomalyshield_applications': {},
+            'anomalyshield_rules': {},
             'backendgroups': {},
             'certs': {},
             'graphql': {},
@@ -1327,10 +1749,14 @@ class Configuration( object ):
             'nodes': {},
             'openapi': {},
             'network_endpoints': {},
-            'templates': {},
+            'routes': {},
+            'trafficmatchers': {},
+            'triggers': {},
             'vhosts': {},
         }
         self._apipolicy = self.objects['apipolicy']
+        self._anomalyshield_applications = self.objects['anomalyshield_applications']
+        self._anomalyshield_rules = self.objects['anomalyshield_rules']
         self._backendgroups = self.objects['backendgroups']
         self._certs = self.objects['certs']
         self._graphql = self.objects['graphql']
@@ -1343,8 +1769,23 @@ class Configuration( object ):
         self._nodes = self.objects['nodes']
         self._openapi = self.objects['openapi']
         self._network_endpoints = self.objects['network_endpoints']
-        self._templates = self.objects['templates']
+        self._routes = self.objects['routes']
+        self._trafficmatchers = self.objects['trafficmatchers']
+        self._triggers = self.objects['triggers']
         self._vhosts = self.objects['vhosts']
+
+        self._settings = {
+            'anomalyshield': None,
+            'defaultroute': None,
+            'dynamicip': None,
+            'license': None,
+            'log': None,
+            'network_services': None,
+            'reporting': None,
+            'session': None,
+            'templates': {},
+        }
+        self._templates = self._settings['templates']
     
     def _listSorted( self, list_of_dicts: list[dict], key: str='id' ):
         if not type( list_of_dicts ) == dict:
@@ -1355,6 +1796,16 @@ class Configuration( object ):
         else:
             func = internal.itemgetter_id
         return sorted( (v for v in list_of_dicts.values() if not v.isDeleted()), key=func )
+    
+    def _addElement2ObjectMap( self, obj: element.ModelElement ) -> element.ModelElement:
+        if obj.id:
+            self.getObjects( obj.getTypeName() )[obj.id] = obj
+        else:
+            try:
+                self.getObjects( obj.getTypeName() )[None].append( obj )
+            except KeyError:
+                self.getObjects( obj.getTypeName() )[None] = [obj]
+        return obj
     
     def _findByName( self, objects, name ):
         for k,v in objects.items():
@@ -1369,14 +1820,14 @@ class Configuration( object ):
                 #     r.append( objects[k] )
         return None
     
-    def _declarativeCreateRelationshipEntry( self, obj: baseObject.ModelElement, my_kind: str, declarative_objects: dict ):
+    def _declarativeCreateRelationshipEntry( self, obj: element.ModelElement, my_kind: str, declarative_objects: dict ):
         # declarative_objects: { kind: [{ 'attributes': object, 'connections': {kind: [names]} }] }
         for item_kind, item_lists_per_kind in declarative_objects.items():
             for item in item_lists_per_kind:
                 for ref_kind, names in item['connections'].items():
                     if ref_kind != my_kind:
                         continue
-                    if RELATIONSHIP_ORDER[KIND2TYPENAME[item_kind]] < RELATIONSHIP_ORDER[KIND2TYPENAME[my_kind]]:
+                    if RELATIONSHIP_ORDER[lookup.get( element.LOOKUP_TYPENAME, item_kind )] < RELATIONSHIP_ORDER[lookup.get( element.LOOKUP_TYPENAME, my_kind )]:
                         # connection to config element which has already/just yet been created
                         # 
                         continue

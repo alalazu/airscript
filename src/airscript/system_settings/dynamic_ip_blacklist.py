@@ -23,15 +23,16 @@ from airscript.model import configuration
 from pyAirlock.common import lookup
 
 
-TYPENAME = 'icap-environment'
-KIND = 'ICAPEnvironment'
+TYPENAME = 'dynamic-ip-address-blacklist'
+KIND = 'DynamicIPBlackListSettings'
 
 lookup.registerBoth( element.LOOKUP_TYPENAME, element.LOOKUP_KIND, TYPENAME, KIND )
 
-class ICAP( element.ModelElement ):
+class DynamicIPBlackListSettings( element.BaseElement ):
     def __init__( self, parent, obj=None, id=None ):
         self._typename = TYPENAME
-        self._path = 'icap-environments'
+        self._path = 'dynamic-ip-address-blacklist'
         self._kind = KIND
-        element.ModelElement.__init__( self, parent, obj=obj, id=id )
+        self._operations = "RU"
+        element.BaseElement.__init__( self, parent, obj=obj, id=id )
     

@@ -18,19 +18,20 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
-from airscript.model import baseObject
-from airscript.utils import typename
+from airscript.base import element
+from airscript.model import configuration
+from pyAirlock.common import lookup
 
 
 TYPENAME = 'host'
 KIND = 'Host'
 
-typename.register( TYPENAME, KIND )
+lookup.registerBoth( element.LOOKUP_TYPENAME, element.LOOKUP_KIND, TYPENAME, KIND )
 
-class Host( baseObject.ModelElement ):
+class Host( element.ModelElement ):
     def __init__( self, parent, obj=None, id=None ):
         self._typename = TYPENAME
         self._path = 'hosts'
         self._kind = KIND
-        baseObject.ModelElement.__init__( self, parent, obj=obj, id=id )
+        element.ModelElement.__init__( self, parent, obj=obj, id=id )
     

@@ -18,22 +18,23 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
-from airscript.utils import output, typename
-from airscript.model import baseObject
-from airscript.model import mapping
+from airscript.utils import output
+from airscript.base import element
+from airscript.model import configuration, mapping
+from pyAirlock.common import lookup
 
 
 TYPENAME = 'api-policy-service'
 KIND = 'APIPolicyService'
 
-typename.register( TYPENAME, KIND )
+lookup.registerBoth( element.LOOKUP_TYPENAME, element.LOOKUP_KIND, TYPENAME, KIND )
 
-class APIPolicy( baseObject.ModelElement ):
+class APIPolicy( element.ModelElement ):
     def __init__( self, parent, obj=None, id=None ):
         self._typename = TYPENAME
         self._path = 'api-policy-services'
         self._kind = KIND
-        baseObject.ModelElement.__init__( self, parent, obj=obj, id=id )
+        element.ModelElement.__init__( self, parent, obj=obj, id=id )
     
     """
     interactions with Gateway REST API

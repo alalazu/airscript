@@ -18,24 +18,18 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
-typename2kind = {}
-kind2typename = {}
+from airscript.base import element
+from pyAirlock.common import lookup
 
-def register( typename: str, kind: str ):
-    global typename2kind, kind2typename
-    typename2kind[typename] = kind
-    kind2typename[kind] = typename
+TYPENAME = 'anomaly-shield-trigger'
+KIND = 'AnomalyShieldTrigger'
 
-def getKind( typename: str ) -> str:
-    global typename2kind
-    try:
-        return typename2kind[typename]
-    except KeyError:
-        return None
+lookup.registerBoth( element.LOOKUP_TYPENAME, element.LOOKUP_KIND, TYPENAME, KIND )
 
-def getTypename( kind: str ) -> str:
-    global kind2typename
-    try:
-        return kind2typename[kind]
-    except KeyError:
-        return None
+class AnomalyShieldTrigger( element.ModelElement ):
+    def __init__( self, parent, obj=None, id=None ):
+        self._typename = TYPENAME
+        self._path = 'anomaly-shield-triggers'
+        self._kind = KIND
+        element.ModelElement.__init__( self, parent, obj=obj, id=id )
+    

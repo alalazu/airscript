@@ -23,19 +23,26 @@ import pem
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 
+from airscript.base import element
 from airscript.utils import output
-from airscript.model import baseObject, vhost
+from airscript.model import vhost
+from pyAirlock.common import lookup
 
 
-class Certificate( baseObject.ModelElement ):
+TYPENAME = 'ssl-certificate'
+KIND = 'TLSCertificate'
+
+lookup.registerBoth( element.LOOKUP_TYPENAME, element.LOOKUP_KIND, TYPENAME, KIND )
+
+class Certificate( element.ModelElement ):
     def __init__( self, parent, obj=None, id=None ):
-        self._typename = 'ssl-certificate'
+        self._typename = TYPENAME
         self._path = 'ssl-certificates'
-        self._kind = 'TLSCertificate'
-        baseObject.ModelElement.__init__( self, parent, obj=obj, id=id )
+        self._kind = KIND
+        element.ModelElement.__init__( self, parent, obj=obj, id=id )
     
     def loadData( self, data: dict, update: bool=False ):
-        baseObject.ModelElement.loadData( self, data=data, update=update )
+        element.ModelElement.loadData( self, data=data, update=update )
         if self._parent.conn == None or self._parent.conn.getVersion() >= 7.6:
             attr_name = "certificate"
         else:

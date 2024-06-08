@@ -56,3 +56,35 @@ class OpenAPI( element.ModelElement ):
             return False
         return self.relationshipDelete( mapping_object )
     
+    def sync( self ) -> bool:
+        """
+        Sync changes to current object to Airlock Gateway
+        - Set all attributes
+
+        Returns:
+        - true: success, sync'ed
+        - false: delete element
+        """
+        if not ('U' in self._operations or 'C' in self._operations):
+            return False
+        classPointer = self._parent.conn.getAPI( self._typename )
+        if classPointer == None:
+            return False
+        if self._deleted:
+            classPointer.delete( self.id )
+            return False
+        if self._attrs_modified:
+            try:
+                content = self.attrs['content']
+                del self.attrs['content']
+            except KeyError:
+                content = None
+            if self.id:
+                self.loadData( classPointer.update( self.id, data=self.datafy() ))
+            else:
+                self.loadData( classPointer.create( data=self.datafy() ))
+            if content:
+                self._parent.conn.openapi.upload( self.id, content )
+            self._attrs_modified = False
+        return True
+    

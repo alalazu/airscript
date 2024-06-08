@@ -78,9 +78,7 @@ from airscript.system_settings import reporting as reporting_settings
 from airscript.system_settings import network_services as network_services_settings
 from airscript.system_settings import session as session_settings
 
-from airscript.model import gateway
 from airscript.utils import internal
-from pyAirlock.gateway.config_api import gateway as gw_api
 from pyAirlock.common import lookup
 from pyAirlock.common import log, utils
 
@@ -176,7 +174,10 @@ RELATIONSHIP_ORDER = {
 
 
 class Configuration( object ):
-    def __init__( self, obj, conn: gw_api.GW, airscript_config ):
+    def __init__( self, obj, conn, airscript_config ):
+        """
+        conn: session.GatewaySession
+        """
         if obj != None:
             self.id = obj['id']
             self.comment = utils.getDictValue( obj, 'attributes.comment', "" )
@@ -299,14 +300,6 @@ class Configuration( object ):
             func = self.vhosts
         return func
     
-    def connectGateway( self, gw: gateway.Gateway, label: str ) -> bool:
-        self.conn = gw.session( label=label )
-        if not self.conn:
-            return False
-        if not gw.connect( label=label ):
-            return False
-        return True
-
     def load( self ) -> bool:
         """ Retrieve configuration data (vhosts, mappings etc.) from Airlock Gateway using REST API. """
         if self.conn:

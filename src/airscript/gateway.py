@@ -17,12 +17,12 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 
+from airscript import session
 from airscript.model import configuration
 from airscript.utils import internal
 from airscript.utils import cache
-from pyAirlock.common import log
-from pyAirlock.gateway.config_api import gateway as gw_api
-from pyAirlock.common import exception
+from pyAirlock import gateway
+from pyAirlock.common import exception, log
 
 
 SESSION_NAME_DEFAULT = "default"
@@ -39,13 +39,10 @@ class Gateway( object ):
         self.name = name
         self.peer = peer
         self.group = group
-        self.version = None
-        self.nodename = None
         self.mgmt = False
         self._hostname = hostname
         self._key = key
         self._run_info = run_info
-        self._sessions = { SESSION_NAME_DEFAULT: gw_api.GW( self.name, self._hostname, self._key, self._run_info ) }
         self._cert = None
         self._tls_verify = True
         self._log = log.Log( self.__module__, run_info )
@@ -63,18 +60,6 @@ class Gateway( object ):
         """ Return API key. """
         return self._key
     
-    def getSession( self, label: str=SESSION_NAME_DEFAULT ) -> gw_api.GW:
-        if not label:
-            label = SESSION_NAME_DEFAULT
-        try:
-            return self._sessions[label]
-        except KeyError:
-            return None
-    
-    def getVersion( self ) -> str:
-        """ Return Gateway version """
-        return self.version
-    
     def getPeer( self ) -> str:
         return self.peer
     
@@ -90,6 +75,36 @@ class Gateway( object ):
         if self.group == group:
             return True
         return False
+    
+    def isActive( self ) -> str:
+        """
+        Check if Airlock Gateway is active node in an active/passive cluster
+        
+        Returns:
+        * True if node is active or if node is not in an active/passive cluster
+        * False if node is the passive partner
+        """
+        return self._gw.isActive()
+    
+    def status( self ) -> dict:
+        """
+        Retrieve node status
+
+        Returns: dict according to [API documentation](https://docs.airlock.com/gateway/latest/rest-api/config-rest-api.html#get-node-status)
+        """
+        return self._gw.status()
+    
+    def failoverState( self ):
+        """
+        Retrieve failover state
+        
+        Returns:
+        * active
+        * passive
+        * standalone
+        * offline
+        """
+        return self._gw.failoverState()
     
     def setCertificate( self, certfile: str=None, pem: str=None ):
         """
@@ -114,61 +129,26 @@ class Gateway( object ):
         """
         self._tls_verify = verify
     
-    def isActive( self, label: str=None ) -> bool:
-        """
-        Check if Airlock Gateway is active node in an active/passive cluster
-        
-        Returns:
-        * True if node is active or if node is not in an active/passive cluster
-        * False if node is the passive partner
-        """
-        conn = self.getSession( label=label )
-        return conn.isActive()
-    
-    def session( self, label ) -> gw_api.GW:
+    def session( self, label: str=SESSION_NAME_DEFAULT ) -> gateway.Session:
         """
         Establish session with Airlock Gateway.
         
         Parameters:
 
-        * `label`: pass in a name under which connection can be retrieved, default is SESSION_NAME_DEFAULT.
+        * `label`: pass in a name for the connection, default is SESSION_NAME_DEFAULT.
 
         Returns: connection handle on success or None on failure
         """
-        if label == None or label == "":
-            self._log.error( f"Session must have a label (string)" )
-            return None
-        if label in self._sessions:
-            self._log.error( f"Session '{label}' already exists" )
-            return None
-        self._sessions[label] = gw_api.GW( self.name, self._hostname, self._key, self._run_info )
-        return self._sessions[label]
-    
-    def connect( self, label: str=None ) -> bool:
-        """
-        Establish session with Airlock Gateway.
-        
-        Parameters:
-
-        * `label`: pass in a name under which connection can be retrieved, default is SESSION_NAME_DEFAULT.
-
-        Returns: connection handle on success or None on failure
-        """
-        conn = self.getSession( label=label )
-        try:
-            if self._cert:
-                conn.setCertificate( certfile=self._cert['file'], pem=self._cert['pem'] )
-            conn.setTLSVerify( self._tls_verify )
-            if conn.connect() == False:
-                return False
-        except exception.AirlockConnectionError:
-            return False
-        conn.post( "/configuration/configurations/load-empty-config", expect=[204] )
-        self._sessions[label] = conn
-        self._log.verbose( "Connected to '%s'" % (self.name,) )
-        self.version = conn.getVersion()
-        self.nodename = conn.getNodename()
-        return True
+        sess = session.GatewaySession( label, self, self._run_info )
+        # sess = gateway.Session( self._hostname, self._key, name=label, run_info=self._run_info )
+        if self._cert:
+            sess.setCertificate( certfile=self._cert['file'], pem=self._cert['pem'] )
+        sess.setTLSVerify( self._tls_verify )
+        if sess.connect():
+            sess.session.post( "/configuration/configurations/load-empty-config", expect=[204] )
+            self._log.verbose( "Connected to '%s'" % (self._hostname,) )
+            return sess
+        return None
     
     def disconnect( self, label: str=None ):
         """ Disconnect from Airlock Gateway, closing administrator session. """

@@ -28,10 +28,9 @@ import time
 
 from colorama import Fore, Style
 
-from airscript.model import gateway
+from airscript import session
 from airscript.utils import output
 from pyAirlock.common import exception, log
-from pyAirlock.gateway.config_api import gateway as gw_api
 
 class KeepAlive( threading.Thread ):
     def __init__( self ):
@@ -41,8 +40,8 @@ class KeepAlive( threading.Thread ):
         self._log = log.Log( self.__module__ )
         self._signal = threading.Event()
     
-    def add( self, gw: gateway.Gateway, interval: int=300 ):
-        self._sessions.append( KeepAliveSession( gw, interval ))
+    def add( self, conn: session.GatewaySession, interval: int=300 ):
+        self._sessions.append( KeepAliveSession( conn, interval ))
         if not self.is_alive():
             self.start()
         elif len( self._sessions ) == 1:
@@ -63,10 +62,10 @@ class KeepAlive( threading.Thread ):
                        Fore.RED, lengths[4], row[4], Style.RESET_ALL,
                       ) )
 
-    def remove( self, gw ):
+    def remove( self, conn ):
         idx = 0
         while idx < len( self._sessions ):
-            if self._sessions[idx].gw == gw:
+            if self._sessions[idx].conn == conn:
                 break
             idx += 1
         try:
@@ -112,8 +111,8 @@ class KeepAlive( threading.Thread ):
 
 
 class KeepAliveSession( object ):
-    def __init__( self, gw: gateway.Gateway, interval: int=300 ):
-        self.gw = gw
+    def __init__( self, conn: session.GatewaySession, interval: int=300 ):
+        self.conn = conn
         self.interval = interval
         self.next = int( time.time() ) + self.interval
         self.last = 0
@@ -124,7 +123,7 @@ class KeepAliveSession( object ):
         return str( { "name": self.getName(), "interval": self.interval, "next": self.next, "last": self.last, "count": self.count, "errors": self.errors } )
     
     def getName( self ):
-        return self.gw.getName()
+        return self.conn.getName()
     
     def getLast( self ):
         if self.last == 0:
@@ -135,14 +134,11 @@ class KeepAliveSession( object ):
         return datetime.datetime.fromtimestamp( self.next )
     
     def getConnection( self ):
-        return self.gw.getSession()
-    
-    def getSession( self ):
-        return self.gw.getSession().session
+        return self.conn
     
     def keepalive( self ):
         try:
-            self.gw.getSession().keepalive()
+            self.conn.keepalive()
             self.last = int( time.time() )
         except exception.AirlockError:
             self.errors += 1

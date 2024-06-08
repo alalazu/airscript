@@ -23,7 +23,8 @@ Airscript commands
 import yaml
 from colorama import Fore, Style
 
-from airscript.model import configuration, gateway
+from airscript import gateway
+from airscript.model import configuration
 from airscript.utils import output
 from pyAirlock.common import log
 

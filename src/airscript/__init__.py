@@ -90,7 +90,8 @@ from pprint import pprint
 from typing import Any
 
 import airscript.commands
-from airscript.model import configuration, gateway
+from airscript import gateway, session
+from airscript.model import configuration
 from airscript.utils import runinfo
 from pyAirlock.common import config, exception, log, utils
 

@@ -247,7 +247,7 @@ class BaseElement( object ):
                 self.loadData( classPointer.create( data=self.datafy() ))
             self._attrs_modified = False
         return True
-            
+    
     def datafy( self, attrs: dict=None, addon: dict=None ) -> str:
         if attrs == None:
             attrs = self.attrs

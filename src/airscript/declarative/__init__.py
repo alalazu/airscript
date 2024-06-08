@@ -106,7 +106,7 @@ class DConfig( object ):
                 yaml.dump_all( export_docs, stream=fp )
         return True
     
-    def saveByMapping( self, force: bool=False ) -> bool:
+    def saveByMapping( self, env: str=None, force: bool=False ) -> bool:
         if not self._loaded:
             self.load( raw=True )
         if self._loaded != "raw" and not force:
@@ -114,11 +114,13 @@ class DConfig( object ):
             return False
         if not None in self._docs:
             return False
+        if env == None:
+            env = 'default'
         doc: connecteddoc.ConnectedDoc
         for key, doc in self._docs[None].items():
             if doc.getKind() != 'Mapping':
                 continue
-            appElements = self._getAppElementList( doc )
+            appElements = self._getAppElementList( doc, env )
             if len( appElements ) < 2:
                 fname = self._fnameFromKind( doc.getKind() )
                 self._addDoc2Docs( doc, f"{fname}.yaml".lower() )
@@ -273,16 +275,16 @@ class DConfig( object ):
                 self._addDoc2Docs( doc, fname )
                 return
 
-    def _getAppElementList( self, doc: connecteddoc.ConnectedDoc ) -> list:
+    def _getAppElementList( self, doc: connecteddoc.ConnectedDoc, env: str ) -> list:
         r = []
-        connections = doc.getConnections4Env( 'default' )
+        connections = doc.getConnections4Env( env )
         for kind, names in connections.items():
             if len( names ) > 1:
                 return []
             connected_doc = self.findDoc( kind, names[0] )
             if connected_doc:
                 if doc.getConnectionOrderNr() > connected_doc.getConnectionOrderNr():
-                    r += self._getAppElementList( connected_doc )
+                    r += self._getAppElementList( connected_doc, env )
         return r + [doc]
 
     def _reset( self ):

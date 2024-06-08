@@ -19,7 +19,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
 from airscript.base import element
-from airscript.model import configuration
+from airscript.utils import templating
 from pyAirlock.common import lookup
 
 
@@ -69,4 +69,9 @@ class License( element.BaseElement ):
             self.loadData( classPointer.update( id=self.id, data=data ))
             self._attrs_modified = False
         return True
+    
+    def _extractName( self, data: dict ) -> str|None:
+        renderer = templating.TemplateHandler()
+        name = renderer.renderString( self._parent.runtimeConfigGet( 'declarative.templating.license-name', '${owner}: ${environment} - ${backendHosts}' ), data['attributes'] )
+        return name
             

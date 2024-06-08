@@ -62,12 +62,20 @@ class ConnectedDoc( basedoc.BaseDoc ):
         except KeyError:
             return False
     
-    def getConnections( self, env: str=None ) -> dict:
+    def getConnections( self ) -> dict:
+        return self._connections
+    
+    def getConnections4Env( self, env: str=None ) -> dict:
         try:
             return self._connections[env]
         except KeyError:
             return self._connections[env][list( self._connections[env].keys() )[0]]
     
+    def getConnectionOrderNr( self ) -> int:
+        if self._base_object == None:
+            return 0
+        return self._base_object.getRelationshipOrderNr()
+
     def export( self ) -> dict:
         r =  super().export()
         r['apiVersion'] = 'gateway.airlock.com/connected-v1alpha'

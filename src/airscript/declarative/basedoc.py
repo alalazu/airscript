@@ -140,7 +140,10 @@ class BaseDoc( object ):
     def _hasTemplateMarker( self, txt: str ) -> bool:
         if txt == None:
             return False
-        return r"${" in txt
+        try:
+            return r"${" in txt
+        except TypeError:
+            return False
 
     def _updateValues( self, target: dict, source: dict, defaults: dict, path: str, env: str=None ):
         """

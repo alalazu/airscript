@@ -25,6 +25,7 @@ import re
 
 from typing import Self
 
+from . import element_helpers
 from airscript.utils import cache
 from airscript.utils import internal
 from airscript.utils import output
@@ -113,13 +114,10 @@ class BaseElement( object ):
         return self._deleted
     
     def loadData( self, data: dict ):
-        self.id = self._extractId( data )
+        self.id = element_helpers.extractId( data )
+        self.name = self._extractName( data )
         self.attrs = data['attributes']
         self._attrs_modified = True
-        try:
-            self.name = self.attrs['name']
-        except KeyError:
-            self.name = None
 
     def delete( self ) -> bool:
         if not 'D' in self._operations:
@@ -201,10 +199,7 @@ class BaseElement( object ):
     def setAttributes( self, attrs: dict ):
         self.attrs = attrs
         self._attrs_modified = True
-        try:
-            self.name = self.attrs['name']
-        except KeyError:
-            pass
+        self.name = self._extractName( attrs )
     
     def copyAttributes( self, obj: Self ):
         if type( obj ) != type( self ):
@@ -329,11 +324,9 @@ class BaseElement( object ):
                 new[k] = None
         return new
     
-    def _extractId( self, data: dict ) -> int|str|None:
+    def _extractName( self, data: dict ) -> str|None:
         try:
-            return int( data['id'] )
-        except (ValueError, TypeError) as e:
-            return data['id']
+            return data['attributes']['name']
         except KeyError:
             return None
     
@@ -350,21 +343,21 @@ class ModelElement( BaseElement ):
         self._connections = None
     
     def items( self ):
-        return { 'id': self.id, 'name': self.name, 
-                 'attributes': self.attrs, 
-                 'relationships': self.rels }
+        r = super().items()
+        r['relationships'] = self.rels
+        return r
+        # return { 'id': self.id, 'name': self.name, 
+        #          'attributes': self.attrs, 
+        #          'relationships': self.rels }
     
-    def me( self ):
-        if self.name != None:
-            return { 'id': self.id, 'name': self.name }
-        else:
-            return { 'id': self.id, 'name': None }
-
     def getRels( self ):
         return self.rels
     
     def printRels( self ):
         pprint.pprint( self.rels )
+    
+    def getRelationshipOrderNr( self ) -> int:
+        return self._parent.elementOrderNr( self._typename )
     
     def loadData( self, data: dict ):
         super().loadData( data, update=True )
@@ -436,16 +429,16 @@ class ModelElement( BaseElement ):
         self._rels_modified = True
         return True
     
-    def addRel( self, reference: Self, load: bool=False, backlink: bool=False ):
-        v = Relationship( reference, load )
-        type_name = reference.getTypeName()
-        if self._typename == reference._typename and backlink:
+    def addRel( self, referencedElement: Self, load: bool=False, backlink: bool=False ):
+        if self._typename == referencedElement._typename and backlink:
             # try:
             #     self.backlinks[type_name].append( v )
             # except KeyError:
             #     self.backlinks[type_name] = [ v ]
             pass
-        elif self._findRel( reference ) == None:
+        elif self._findRel( referencedElement ) == None:
+            v = Relationship( referencedElement, load )
+            type_name = referencedElement.getTypeName()
             try:
                 self.rels[type_name].append( v )
             except KeyError:
@@ -581,7 +574,7 @@ class ModelElement( BaseElement ):
     """
     def _addRel( self, item ):
         type_name = item['type']
-        obj = self._parent.addElement( type_name, id=self._extractId( item ))
+        obj = self._parent.addElement( type_name, id=element_helpers.extractId( item ))
         if type_name != "mapping-template":
             obj.addRel( self, backlink=True )
         self.addRel( obj )
@@ -593,11 +586,11 @@ class ModelElement( BaseElement ):
         except KeyError:
             pass
 
-    def _findRel( self, reference ) -> dict:
-        type_name = reference.getTypeName()
+    def _findRel( self, referencedElement ) -> dict:
+        type_name = referencedElement.getTypeName()
         try:
             for rel in self.rels[type_name]:
-                if rel.reference == reference:
+                if rel.reference == referencedElement:
                     return rel
         except KeyError:
             pass

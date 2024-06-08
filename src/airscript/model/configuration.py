@@ -45,7 +45,7 @@ This class represents a complete Airlock Gateway Configuration and consists of m
 import datetime
 from typing import Union
 
-from airscript.base import element
+from airscript.base import element, element_helpers
 from airscript.model import api_policy
 from airscript.model import backendgroup
 from airscript.model import certificate
@@ -79,10 +79,9 @@ from airscript.system_settings import network_services as network_services_setti
 from airscript.system_settings import session as session_settings
 
 from airscript.model import gateway
+from airscript.utils import internal
 from pyAirlock.gateway.config_api import gateway as gw_api
 from pyAirlock.common import lookup
-
-from airscript.utils import internal
 from pyAirlock.common import log, utils
 
 
@@ -202,6 +201,9 @@ class Configuration( object ):
     
     def __repr__( self ):
         return str( { 'id': self.id, 'comment': self.comment, 'type': self.type } )
+    
+    def runtimeConfigGet( self, path: str, default: str=None ):
+        return self._airscript_config.get( path, default )
     
     def clear( self ):
         self._reset()
@@ -935,7 +937,7 @@ class Configuration( object ):
             if self.load() == False:
                 return None
         for entry in self.conn.api_policy.read():
-            self._addElement2ObjectMap( self.addAPIPolicy( id=entry['id'], data=entry ))
+            self._addElement2ObjectMap( self.addAPIPolicy( id=element_helpers.extractId( entry ), data=entry ))
         return self._apipolicy
     
     def getAnomalyShieldApplications( self ) -> Union[list[dict], None]:
@@ -948,7 +950,7 @@ class Configuration( object ):
             if self.load() == False:
                 return None
         for entry in self.conn.anomalyshield_application.read():
-            self._addElement2ObjectMap( self.addAnomalyShieldApplication( id=entry['id'], data=entry ))
+            self._addElement2ObjectMap( self.addAnomalyShieldApplication( id=element_helpers.extractId( entry ), data=entry ))
         return self._anomalyshield_applications
     
     def getAnomalyShieldRules( self ) -> Union[list[dict], None]:
@@ -961,7 +963,7 @@ class Configuration( object ):
             if self.load() == False:
                 return None
         for entry in self.conn.anomalyshield_rule.read():
-            self._addElement2ObjectMap( self.addAnomalyShieldRule( id=entry['id'], data=entry ))
+            self._addElement2ObjectMap( self.addAnomalyShieldRule( id=element_helpers.extractId( entry ), data=entry ))
         return self._anomalyshield_rules
     
     def getAnomalyShieldTrafficMatchers( self ) -> Union[list[dict], None]:
@@ -974,7 +976,7 @@ class Configuration( object ):
             if self.load() == False:
                 return None
         for entry in self.conn.anomalyshield_trafficmatcher.read():
-            self._addElement2ObjectMap( self.addAnomalyShieldTrafficMatcher( id=entry['id'], data=entry ))
+            self._addElement2ObjectMap( self.addAnomalyShieldTrafficMatcher( id=element_helpers.extractId( entry ), data=entry ))
         return self._trafficmatchers
     
     def getAnomalyShieldTriggers( self ) -> Union[list[dict], None]:
@@ -987,7 +989,7 @@ class Configuration( object ):
             if self.load() == False:
                 return None
         for entry in self.conn.anomalyshield_trigger.read():
-            self._addElement2ObjectMap( self.addAnomalyShieldTrigger( id=entry['id'], data=entry ))
+            self._addElement2ObjectMap( self.addAnomalyShieldTrigger( id=element_helpers.extractId( entry ), data=entry ))
         return self._triggers
     
     def getBackendGroups( self ) -> Union[list[dict], None]:
@@ -1000,7 +1002,7 @@ class Configuration( object ):
             if self.load() == False:
                 return None
         for entry in self.conn.backendgroup.read():
-            self._addElement2ObjectMap( self.addBackendGroup( id=entry['id'], data=entry ))
+            self._addElement2ObjectMap( self.addBackendGroup( id=element_helpers.extractId( entry ), data=entry ))
         return self._backendgroups
     
     def getCertificates( self ) -> Union[list[dict], None]:
@@ -1013,7 +1015,7 @@ class Configuration( object ):
             if self.load() == False:
                 return None
         for entry in self.conn.certificate.read():
-            self._addElement2ObjectMap( self.addCertificate( id=entry['id'], data=entry ))
+            self._addElement2ObjectMap( self.addCertificate( id=element_helpers.extractId( entry ), data=entry ))
         return self._certs
     
     def getGraphQL( self ) -> Union[list[dict], None]:
@@ -1026,7 +1028,7 @@ class Configuration( object ):
             if self.load() == False:
                 return None
         for entry in self.conn.graphql.read():
-            self._addElement2ObjectMap( self.addGraphQL( id=entry['id'], data=entry ))
+            self._addElement2ObjectMap( self.addGraphQL( id=element_helpers.extractId( entry ), data=entry ))
         return self._graphql
     
     def getHostNames( self ) -> Union[list[dict], None]:
@@ -1039,7 +1041,7 @@ class Configuration( object ):
             if self.load() == False:
                 return None
         for entry in self.conn.host.read():
-            self._addElement2ObjectMap( self.addHostName( id=entry['id'], data=entry ))
+            self._addElement2ObjectMap( self.addHostName( id=element_helpers.extractId( entry ), data=entry ))
         return self._hostnames
     
     def getICAP( self ) -> Union[list[dict], None]:
@@ -1052,7 +1054,7 @@ class Configuration( object ):
             if self.load() == False:
                 return None
         for entry in self.conn.icap.read():
-            self._addElement2ObjectMap( self.addICAP( id=entry['id'], data=entry ))
+            self._addElement2ObjectMap( self.addICAP( id=element_helpers.extractId( entry ), data=entry ))
         return self._icap
     
     def getIPLists( self ) -> Union[list[dict], None]:
@@ -1065,7 +1067,7 @@ class Configuration( object ):
             if self.load() == False:
                 return None
         for entry in self.conn.iplist.read():
-            self._addElement2ObjectMap( self.addIPList( id=entry['id'], data=entry ))
+            self._addElement2ObjectMap( self.addIPList( id=element_helpers.extractId( entry ), data=entry ))
         return self._iplists
     
     def getJWKS( self ) -> Union[list[dict], None]:
@@ -1078,9 +1080,9 @@ class Configuration( object ):
             if self.load() == False:
                 return None
         for entry in self.conn.jwks_local.read():
-            self._addElement2ObjectMap( self.addJWKS( id=entry['id'], data=entry, remote=False ))
+            self._addElement2ObjectMap( self.addJWKS( id=element_helpers.extractId( entry ), data=entry, remote=False ))
         for entry in self.conn.jwks_remote.read():
-            self._addElement2ObjectMap( self.addJWKS( id=entry['id'], data=entry ))
+            self._addElement2ObjectMap( self.addJWKS( id=element_helpers.extractId( entry ), data=entry ))
         return self._jwks
     
     def getKerberos( self ) -> Union[list[dict], None]:
@@ -1093,7 +1095,7 @@ class Configuration( object ):
             if self.load() == False:
                 return None
         for entry in self.conn.kerberos.read():
-            self._addElement2ObjectMap( self.addKerberos( id=entry['id'], data=entry ))
+            self._addElement2ObjectMap( self.addKerberos( id=element_helpers.extractId( entry ), data=entry ))
         return self._kerberos
     
     def getMappings( self ) -> Union[list[dict], None]:
@@ -1106,7 +1108,7 @@ class Configuration( object ):
             if self.load() == False:
                 return None
         for entry in self.conn.mapping.read():
-            self._addElement2ObjectMap( self.addMapping( id=entry['id'], data=entry ))
+            self._addElement2ObjectMap( self.addMapping( id=element_helpers.extractId( entry ), data=entry ))
         return self._mappings
     
     def getNetworkEndpoints( self ) -> Union[list[dict], None]:
@@ -1119,7 +1121,7 @@ class Configuration( object ):
             if self.load() == False:
                 return None
         for entry in self.conn.network_endpoint.read():
-            self._addElement2ObjectMap( self.addNetworkEndpoint( id=entry['id'], data=entry ))
+            self._addElement2ObjectMap( self.addNetworkEndpoint( id=element_helpers.extractId( entry ), data=entry ))
         return self._network_endpoints
     
     def getNodes( self ) -> Union[list[dict], None]:
@@ -1132,7 +1134,7 @@ class Configuration( object ):
             if self.load() == False:
                 return None
         for entry in self.conn.node.read():
-            self._addElement2ObjectMap( self.addNode( id=entry['id'], data=entry ))
+            self._addElement2ObjectMap( self.addNode( id=element_helpers.extractId( entry ), data=entry ))
         return self._nodes
     
     def getOpenAPI( self ) -> Union[list[dict], None]:
@@ -1145,7 +1147,7 @@ class Configuration( object ):
             if self.load() == False:
                 return None
         for entry in self.conn.openapi.read():
-            self._addElement2ObjectMap( self.addOpenAPI( id=entry['id'], data=entry ))
+            self._addElement2ObjectMap( self.addOpenAPI( id=element_helpers.extractId( entry ), data=entry ))
         return self._openapi
     
     def getRoutes( self ) -> Union[list[dict], None]:
@@ -1158,13 +1160,13 @@ class Configuration( object ):
             if self.load() == False:
                 return None
         for entry in self.conn.routes_ipv4_destination.read():
-            self._addElement2ObjectMap( self.addRoute( id=entry['id'], data=entry, ipv4=True, source=False ))
+            self._addElement2ObjectMap( self.addRoute( id=element_helpers.extractId( entry ), data=entry, ipv4=True, source=False ))
         for entry in self.conn.routes_ipv6_destination.read():
-            self._addElement2ObjectMap( self.addRoute( id=entry['id'], data=entry, ipv4=False, source=False ))
+            self._addElement2ObjectMap( self.addRoute( id=element_helpers.extractId( entry ), data=entry, ipv4=False, source=False ))
         for entry in self.conn.routes_ipv4_source.read():
-            self._addElement2ObjectMap( self.addRoute( id=entry['id'], data=entry, ipv4=True, source=True ))
+            self._addElement2ObjectMap( self.addRoute( id=element_helpers.extractId( entry ), data=entry, ipv4=True, source=True ))
         for entry in self.conn.routes_ipv6_source.read():
-            self._addElement2ObjectMap( self.addRoute( id=entry['id'], data=entry, ipv4=False, source=True ))
+            self._addElement2ObjectMap( self.addRoute( id=element_helpers.extractId( entry ), data=entry, ipv4=False, source=True ))
         return self._routes
     
     def getTemplates( self ) -> Union[list[dict], None]:
@@ -1179,7 +1181,7 @@ class Configuration( object ):
         resp = self.conn.get( "/configuration/templates/mappings" )
         if resp.text != "":
             for entry in resp.json()['data']:
-                self._addElement2ObjectMap( self.addTemplate( id=entry['id'], data=entry ))
+                self._addElement2ObjectMap( self.addTemplate( id=element_helpers.extractId( entry ), data=entry ))
         return self._templates
     
     def getVHosts( self ) -> Union[list[dict], None]:
@@ -1192,7 +1194,7 @@ class Configuration( object ):
             if self.load() == False:
                 return None
         for entry in self.conn.vhost.read():
-            self._addElement2ObjectMap( self.addVHost( id=entry['id'], data=entry ))
+            self._addElement2ObjectMap( self.addVHost( id=element_helpers.extractId( entry ), data=entry ))
         return self.vhosts()
     
     def getSettingsLicense( self ) -> Union[dict, None]:

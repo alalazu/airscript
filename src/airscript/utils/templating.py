@@ -23,18 +23,29 @@ from pyAirlock.common import config
 
 
 class TemplateHandler( object ):
-    def __init__( self, cfg: config.Config, raw=False ):
-        self._airscript_module_dir = cfg.get( 'declarative.templating-module-dir', 'templates/modules' )
+    def __init__( self, cfg: config.Config=None, raw=False ):
+        if cfg:
+            self._airscript_module_dir = cfg.get( 'declarative.templating.module-dir', 'templates/modules' )
+        else:
+            self._airscript_module_dir = None
         self._raw = raw
-        self._params = {}
 
-    ''' render template '''
-    def render( self, fname ):
+    ''' render template file '''
+    def renderFile( self, fname: str, params ):
         template = Template( filename=fname, module_directory=self._airscript_module_dir )
         if self._raw:
             return template.source
         try:
-            return template.render( **self._params )
+            return template.render( **params )
+        except:
+            print( exceptions.html_error_template().render() )
+            return ""
+    
+    ''' render template file '''
+    def renderString( self, tpl: str, params ):
+        template = Template( tpl )
+        try:
+            return template.render( **params )
         except:
             print( exceptions.html_error_template().render() )
             return ""

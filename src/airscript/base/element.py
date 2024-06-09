@@ -483,7 +483,10 @@ class ModelElement( BaseElement ):
         - false: delete element
         """
         if not super().sync():
-            return
+            return False
+        return self._syncRelationships()
+    
+    def _syncRelationships( self ):
         if self._rels_modified:
             classPointer = self._parent.conn.getAPI( self._typename )
             for grp, lst in self.rels.items():
@@ -508,7 +511,7 @@ class ModelElement( BaseElement ):
                 self.rels[grp][:] = [x for x in self.rels[grp] if x.status != 'del']
             self._rels_modified = False
         return True
-            
+    
     def declarativeExport( self ) -> dict:
         out = super().declarativeExport()
         for type_name in self.rels:

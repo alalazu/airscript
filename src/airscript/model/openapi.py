@@ -86,5 +86,5 @@ class OpenAPI( element.ModelElement ):
             if content:
                 self._parent.conn.openapi.upload( self.id, content )
             self._attrs_modified = False
-        return True
+        return self._syncRelationships()
     

@@ -86,5 +86,5 @@ class GraphQL( element.ModelElement ):
             if content:
                 self._parent.conn.graphql.upload( self.id, content )
             self._attrs_modified = False
-        return True
+        return self._syncRelationships()
     

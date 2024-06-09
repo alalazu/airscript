@@ -73,3 +73,27 @@ class Certificate( element.ModelElement ):
             return False
         return self.relationshipDelete( vhost_object )
     
+    def sync( self ) -> bool:
+        """
+        Sync changes to current object to Airlock Gateway
+        - Set all attributes
+        - Link relations to object types which should already have been updated
+        - Other relations are (later) linked from the other object types back to here
+
+        Returns:
+        - true: success, sync'ed
+        - false: delete element
+        """
+        if not 'passphrase' in self.attrs:
+            self.attrs['passphrase'] = ''
+            del_passphrase = True
+        else:
+            del_passphrase = False
+        r = super().sync()
+        if del_passphrase:
+            try:
+                del self.attrs['passphrase']
+            except KeyError:
+                pass
+        return r
+    

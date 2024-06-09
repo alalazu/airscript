@@ -443,6 +443,7 @@ class Configuration( object ):
         self.comment = f"Declarative ({declarative['source']}, env {declarative['env']})"
         # create objects without connecting them
         for item_kind, item_lists_per_kind in declarative['objects'].items():
+            print( f"{item_kind}:" )
             type_name = lookup.get( element.LOOKUP_KIND, item_kind )
             # type_name = KIND2TYPENAME[item_kind]
             for item in item_lists_per_kind:
@@ -456,9 +457,10 @@ class Configuration( object ):
                     except KeyError:
                         pass
                     self._addElement2ObjectMap( obj )
-                print( f"{item_kind}: {obj}" )
+                print( f"  {obj}" )
         # establish connections
         obj: element.ModelElement
+        print( "Establish connections" )
         for object_map in self.objects.values():
             for obj in object_map.values():
                 if isinstance( obj, element.ModelElement ):
@@ -468,6 +470,7 @@ class Configuration( object ):
                             for name in names:
                                 ref = self._findByName( self.getObjects( lookup.get( element.LOOKUP_KIND, ref_kind )), name )
                                 # ref = self._findByName( self.getObjects( KIND2TYPENAME[ref_kind] ), name )
+                                print( f"{obj.getKind()}:{obj.name} - {ref.getKind()}:{ref.name}" )
                                 obj.addRel( ref, load=True, backlink=True )
         self.sync()
         #self.save()
@@ -1773,7 +1776,7 @@ class Configuration( object ):
                 self.getObjects( obj.getTypeName() )[None] = [obj]
         return obj
     
-    def _findByName( self, objects, name ):
+    def _findByName( self, objects, name ) -> element.ModelElement:
         for k,v in objects.items():
             if k:
                 v = [v]

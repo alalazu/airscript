@@ -1,0 +1,2 @@
+endpoint: /auth-api-policy-service/rest/resolve-tech-client
+sharedSecret: '**** hidden ****'

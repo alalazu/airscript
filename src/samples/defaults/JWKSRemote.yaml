@@ -1,0 +1,8 @@
+issuer: ''
+tls:
+  cipherSuite: DEFAULT
+  forceNewSession: false
+  protocol: DEFAULT
+  serverCertificateValidation:
+    enabled: false
+    verifyHost: true

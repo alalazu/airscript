@@ -191,8 +191,11 @@ class DConfig( object ):
         if self._loaded != "raw" and not force:
             output.error( "Loaded config not in format 'raw' - reload or specify 'force=True'" )
             return False
+        item: element.ModelElement
         for key, object_map in cfg.objects.items():
             for item in object_map.values():
+                if item.id < 0:
+                    continue
                 if key in ['hostnames', 'nodes', 'network_endpoints', 'routes']:
                     self._mergeGlobalDoc( item, env )
                 else:

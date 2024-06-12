@@ -52,7 +52,7 @@ class ConnectedDoc( basedoc.BaseDoc ):
             try:
                 if len( self._connections[env] ) > 0:
                     return True
-            except KeyError:
+            except (KeyError, TypeError):
                 pass
         return False
     
@@ -111,6 +111,8 @@ class ConnectedDoc( basedoc.BaseDoc ):
             base = {}
         try:
             ovrl = self._connections[env]
+            if not ovrl:
+                ovrl = {}
         except KeyError:
             ovrl = {}
         connections = self._overwriteValues( base, ovrl )

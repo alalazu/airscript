@@ -81,8 +81,9 @@ class GatewaySession( object ):
     
     def disconnect( self ):
         """ Disconnect from Airlock Gateway, closing administrator session. """
-        self.session.disconnect()
-        self.session = None
+        if self.session:
+            self.session.disconnect()
+            self.session = None
         self._version = None
         self._nodename = None
         self.configs = None

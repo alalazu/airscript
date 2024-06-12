@@ -26,7 +26,7 @@ from pyAirlock.common import lookup
 TYPENAME = 'license-response'
 KIND = 'License'
 
-lookup.registerBoth( element.LOOKUP_TYPENAME, element.LOOKUP_KIND, TYPENAME, KIND )
+lookup.registerBoth( element.LOOKUP_TYPENAME2KIND, element.LOOKUP_KIND2TYPENAME, TYPENAME, KIND )
 
 class License( element.BaseElement ):
     def __init__( self, parent, obj=None, id=None ):

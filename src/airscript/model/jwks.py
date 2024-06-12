@@ -29,10 +29,12 @@ REMOTE_KIND = 'JWKSRemote'
 LOCAL_TYPENAME = 'local-json-web-key-set'
 LOCAL_KIND = 'JWKSLocal'
 
-lookup.registerBoth( element.LOOKUP_TYPENAME, element.LOOKUP_KIND, REMOTE_TYPENAME, REMOTE_KIND )
-lookup.registerBoth( element.LOOKUP_TYPENAME, element.LOOKUP_KIND, LOCAL_TYPENAME, LOCAL_KIND )
+lookup.registerBoth( element.LOOKUP_TYPENAME2KIND, element.LOOKUP_KIND2TYPENAME, REMOTE_TYPENAME, REMOTE_KIND )
+lookup.registerBoth( element.LOOKUP_TYPENAME2KIND, element.LOOKUP_KIND2TYPENAME, LOCAL_TYPENAME, LOCAL_KIND )
 
 class JWKS( element.ModelElement ):
+    RELATIONKEY = { "mapping": "mappings" }
+    
     def __init__( self, parent, obj=None, id=None, remote=True ):
         self._remote = remote
         if remote:

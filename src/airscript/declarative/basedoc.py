@@ -258,6 +258,8 @@ class BaseDoc( object ):
                         except IndexError:
                             default_values = {}
                         value_list.append ( self._overwriteValues( default_values, entry ))
+                    else:
+                        value_list.append( entry )
                 new_value = value_list
             else:
                 try:

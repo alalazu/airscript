@@ -24,9 +24,11 @@ from pyAirlock.common import lookup
 TYPENAME = 'anomaly-shield-rule'
 KIND = 'AnomalyShieldRule'
 
-lookup.registerBoth( element.LOOKUP_TYPENAME, element.LOOKUP_KIND, TYPENAME, KIND )
+lookup.registerBoth( element.LOOKUP_TYPENAME2KIND, element.LOOKUP_KIND2TYPENAME, TYPENAME, KIND )
 
 class AnomalyShieldRule( element.ModelElement ):
+    RELATIONKEY = { "anomaly-shield-application": "anomaly-shield-applications", "anomaly-shield-trigger": "anomaly-shield-triggers" }
+    
     def __init__( self, parent, obj=None, id=None ):
         self._typename = TYPENAME
         self._path = 'anomaly-shield-rules'

@@ -28,10 +28,12 @@ from typing import Union
 TYPENAME = 'back-end-group'
 KIND = 'BackendGroup'
 
-lookup.registerBoth( element.LOOKUP_TYPENAME, element.LOOKUP_KIND, TYPENAME, KIND )
+lookup.registerBoth( element.LOOKUP_TYPENAME2KIND, element.LOOKUP_KIND2TYPENAME, TYPENAME, KIND )
 
 
 class Backendgroup( element.ModelElement ):
+    RELATIONKEY = { "mapping": "mappings", "ssl-certificate": "client-certificate" }
+    
     def __init__( self, parent, obj=None, id=None ):
         self._typename = TYPENAME
         self._path = 'back-end-groups'

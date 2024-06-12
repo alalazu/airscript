@@ -20,7 +20,7 @@ from typing import Self
 
 from airscript.declarative import basedoc
 from airscript.base import element
-from pyAirlock.common import utils
+from pyAirlock.common import lookup, utils
 
 
 class ConnectedDoc( basedoc.BaseDoc ):
@@ -66,10 +66,25 @@ class ConnectedDoc( basedoc.BaseDoc ):
         return self._connections
     
     def getConnections4Env( self, env: str=None ) -> dict:
+        r = {}
         try:
             return self._connections[env]
         except KeyError:
-            return self._connections[env][list( self._connections[env].keys() )[0]]
+            return {}
+    
+    def _connKeyExtractReltype( self, key: str ) -> str:
+        try:
+            reltype, name = key.split( ':' )
+        except ValueError:
+            return key
+        return reltype
+    
+    def _connKeyExtractName( self, key: str ) -> str:
+        try:
+            reltype, name = key.split( ':' )
+        except ValueError:
+            return key
+        return name
     
     def getConnectionOrderNr( self ) -> int:
         if self._base_object == None:
@@ -88,7 +103,7 @@ class ConnectedDoc( basedoc.BaseDoc ):
         self._changelog.replace( "metadata.connections", self._connections[env] )
         super().update( doc, env=env )
 
-    def connectionsReduce2Env( self, env: str, lookup: dict ) -> bool:
+    def connectionsReduce2Env( self, env: str, valid_docs: dict ) -> bool:
         removed = False
         try:
             base = self._connections['default']
@@ -99,6 +114,23 @@ class ConnectedDoc( basedoc.BaseDoc ):
         except KeyError:
             ovrl = {}
         connections = self._overwriteValues( base, ovrl )
+        for reltype, lst in connections.items():
+            # $$$
+            # kind = lookup.get( element.LOOKUP_KIND2TYPENAME, lookup.get( lookup.RELTYPE2NAME, reltype ))
+            kind = lookup.get( element.LOOKUP_TYPENAME2KIND, lookup.get( lookup.RELTYPE2NAME, reltype ))
+            if not kind:
+                kind = reltype
+            to_be_deleted = []
+            for ref in lst:
+                if not f"{kind}:{ref}" in valid_docs:
+                    to_be_deleted.append( ref )
+                    removed = True
+            try:
+                self._connections[env][reltype] = list( set(connections[reltype]) - set(to_be_deleted) )
+            except KeyError:
+                self._connections[env] = { reltype: list( set(connections[reltype]) - set(to_be_deleted) ) }
+        return removed
+    
         for type_name, lst in connections.items():
             tbd = []
             for ref in lst:
@@ -110,4 +142,3 @@ class ConnectedDoc( basedoc.BaseDoc ):
             except KeyError:
                 self._connections[env] = { type_name: list( set(connections[type_name]) - set(tbd) ) }
         return removed
-    

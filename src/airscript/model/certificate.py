@@ -32,9 +32,11 @@ from pyAirlock.common import lookup
 TYPENAME = 'ssl-certificate'
 KIND = 'TLSCertificate'
 
-lookup.registerBoth( element.LOOKUP_TYPENAME, element.LOOKUP_KIND, TYPENAME, KIND )
+lookup.registerBoth( element.LOOKUP_TYPENAME2KIND, element.LOOKUP_KIND2TYPENAME, TYPENAME, KIND )
 
 class Certificate( element.ModelElement ):
+    RELATIONKEY = { "virtual-host": "virtual-hosts", "remote-json-web-key-set": "remote-json-web-key-sets" }
+    
     def __init__( self, parent, obj=None, id=None ):
         self._typename = TYPENAME
         self._path = 'ssl-certificates'

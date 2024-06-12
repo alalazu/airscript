@@ -29,9 +29,10 @@ from . import element_helpers
 from airscript.utils import cache
 from airscript.utils import internal
 from airscript.utils import output
+from pyAirlock.common import exception, lookup
 
-LOOKUP_TYPENAME = "typename"
-LOOKUP_KIND = "kind"
+LOOKUP_TYPENAME2KIND = "typename"
+LOOKUP_KIND2TYPENAME = "kind"
 
 
 class BaseElement( object ):
@@ -262,23 +263,6 @@ class BaseElement( object ):
     def jsonize( self, attrs: dict=None, addon: dict=None ) -> str:
         return json.dumps( self.datafy( attrs=attrs, addon=addon ))
     
-    def declarativeExport( self ) -> dict:
-        out = {
-                'apiVersion': 'gateway.airlock.com/v1alpha',
-                'kind': self._kind,
-                'metadata': {
-                    'name': self.name,
-                    'environments': [],
-                },
-                'connections': {},
-                'spec': self.getAttrs()
-        }
-        try:
-            del out['spec']['name']
-        except KeyError:
-            pass
-        return out
-    
 
     """
     interactions with Gateway REST API
@@ -332,6 +316,8 @@ class BaseElement( object ):
     
 
 class ModelElement( BaseElement ):
+    RELATIONKEY = {}
+
     def __init__( self, parent, obj=None, id=None ):
         self.rels = {}
         super().__init__( parent, obj=obj, id=id )
@@ -346,9 +332,6 @@ class ModelElement( BaseElement ):
         r = super().items()
         r['relationships'] = self.rels
         return r
-        # return { 'id': self.id, 'name': self.name, 
-        #          'attributes': self.attrs, 
-        #          'relationships': self.rels }
     
     def getRels( self ):
         return self.rels
@@ -407,16 +390,16 @@ class ModelElement( BaseElement ):
             for grp,d in data['relationships'].items():
                 if isinstance( d['data'], list ):
                     for item in d['data']:
-                        self._addRel( item )
+                        self._addRel( grp, item )
                 else:
-                    self._addRel( d['data'] )
+                    self._addRel( grp, d['data'] )
             self._rels_modified = False
 
     def delete( self ) -> bool:
         super().delete()
-        for type_name in self.rels:
-            while len( self.rels[type_name] ):
-                self.deleteRel( self.rels[type_name][0].reference, markOnly=False )
+        for reltype in self.rels:
+            while len( self.rels[reltype] ):
+                self.deleteRel( self.rels[reltype][0].reference, markOnly=False )
     
     def copyRelationships( self, obj: Self ):
         if type( obj ) != type( self ):
@@ -425,11 +408,20 @@ class ModelElement( BaseElement ):
         if obj.rels == {} and self.rels == {}:
             return True
         else:
-            self.rels = self._copyDictKeys( obj.attrs )
+            self.rels = self._copyDictKeys( obj.rels )
         self._rels_modified = True
         return True
     
-    def addRel( self, referencedElement: Self, load: bool=False, backlink: bool=False ):
+    def getRelationType( self, item_type, referencing_key ):
+        try:
+            reltype = self.RELATIONKEY[item_type]
+        except KeyError:
+            return item_type
+        if reltype == None:
+            return referencing_key
+        return reltype
+    
+    def addRel( self, referencedElement: Self, reltype: str, load: bool=False, backlink: bool=False ):
         if self._typename == referencedElement._typename and backlink:
             # try:
             #     self.backlinks[type_name].append( v )
@@ -437,12 +429,11 @@ class ModelElement( BaseElement ):
             #     self.backlinks[type_name] = [ v ]
             pass
         elif self._findRel( referencedElement ) == None:
-            v = Relationship( referencedElement, load )
-            type_name = referencedElement.getTypeName()
+            v = Relationship( referencedElement, reltype, load )
             try:
-                self.rels[type_name].append( v )
+                self.rels[reltype].append( v )
             except KeyError:
-                self.rels[type_name] = [ v ]
+                self.rels[reltype] = [ v ]
             self._rels_modified = True
 
     def deleteRel( self, reference: Self, removeBacklink: bool=True, markOnly: bool=True ) -> bool:
@@ -466,9 +457,9 @@ class ModelElement( BaseElement ):
 
     def listRelWithKind( self ) -> dict:
         r = {}
-        for type_name in self.rels:
-            kind = self.rels[type_name][0].reference.getKind()
-            r[kind] = [ref.reference.name for ref in self.rels[type_name]]
+        for reltype in self.rels:
+            # kind = self.rels[reltype][0].reference.getKind()
+            r[reltype] = [ref.reference.name for ref in self.rels[reltype]]
         return r
 
     def sync( self ) -> bool:
@@ -487,37 +478,39 @@ class ModelElement( BaseElement ):
         return self._syncRelationships()
     
     def _syncRelationships( self ):
+        lst_rels: list[Relationship]
+        entry: Relationship
         if self._rels_modified:
             classPointer = self._parent.conn.getAPI( self._typename )
-            for grp, lst in self.rels.items():
-                #relPointer = self._parent.conn.getAPI( grp )
-                for rel in lst:
+            for reltype, lst_rels in self.rels.items():
+                #relPointer = self._parent.conn.getAPI( reltype )
+                for rel in lst_rels:
                     if rel.reference.isDeleted():
-                        # nohing o do if oher obje is deleed relaionship will be removed auomaiall
+                        # nothing to do - when other object is deleted on Airflock Gateway, relationship will be removed automatically
                         continue
                     if rel.status == 'del':
-                        if not classPointer.removeConnection( connection=grp, id=self.id, relation_id=rel.reference.id ):
-                            output.error( f"Sync error for {self._typename}-{self.name}: failed to remove connection to {grp}{rel.reference.name}" )
+                        try:
+                            if not classPointer.removeConnection( reltype, id=self.id, relation_id=rel.reference.id ):
+                                output.error( f"Sync error for {self._typename}:{self.name} - failed to remove connection to {reltype}:{rel.reference.name}" )
+                        except exception.AirlockInvalidRelationshipTypeError:
+                            pass
                         entry = rel.reference._findRel( self )
-                        rel.reference.rels[self._typename].remove( entry )
+                        rel.reference.rels[entry.getType()].remove( entry )
                     elif rel.status == 'new':
-                        if self._parent.elementOrderNr( self._typename ) < self._parent.elementOrderNr( grp ):
+                        if self._parent.elementOrderNr( self._typename ) < self._parent.elementOrderNr( reltype ):
+                            # referenced config element may not have yet been sync'ed
                             continue
-                        if classPointer.addConnection( connection=grp, id=self.id, relation_id=rel.reference.id ):
+                        try:
+                            r = classPointer.addConnection( reltype, id=self.id, relation_id=rel.reference.id )
                             rel.status = ''
-                        else:
-                            output.error( f"Sync error for {self._typename}-{self.name}: failed to add connection to {grp}{rel.reference.name}" )
+                        except exception.AirlockInvalidRelationshipTypeError:
+                            r = False
+                        if not r:
+                            output.error( f"Sync error for {self._typename}:{self.name} - failed to add connection to {reltype}:{rel.reference.name}" )
                 # remove deleted relationship from object
-                self.rels[grp][:] = [x for x in self.rels[grp] if x.status != 'del']
+                self.rels[reltype][:] = [x for x in self.rels[reltype] if x.status != 'del']
             self._rels_modified = False
         return True
-    
-    def declarativeExport( self ) -> dict:
-        out = super().declarativeExport()
-        for type_name in self.rels:
-            kind = self.rels[type_name][0].reference.getKind()
-            out['connections'][kind] = [ref.reference.name for ref in self.rels[type_name]]
-        return out
     
     def declarativeStoreConnections( self, connections: dict ):
         self._connections = connections
@@ -575,28 +568,44 @@ class ModelElement( BaseElement ):
     """
     internal methodes
     """
-    def _addRel( self, item ):
+    def _getRelType( self, referenced_type: str, my_rel_type: str ) -> str:
+        reltype = lookup.get( lookup.TYPE2RELTYPE, referenced_type )
+        if reltype == None or isinstance( reltype, list ):
+            return my_rel_type
+        return reltype
+
+    def _addRel( self, reltype: str, item: dict ):
+        obj: ModelElement
         type_name = item['type']
         obj = self._parent.addElement( type_name, id=element_helpers.extractId( item ))
         if type_name != "mapping-template":
-            obj.addRel( self, backlink=True )
-        self.addRel( obj )
+            obj.addRel( self, obj.getRelationType( self._typename, reltype ), backlink=True )
+        self.addRel( obj, reltype )
     
     def _delRel( self, rel ):
-        type_name = rel.reference.getTypeName()
         try:
-            self.rels[type_name].remove( rel )
+            self.rels[rel.getType()].remove( rel )
         except KeyError:
             pass
+        # type_name = rel.reference.getTypeName()
+        # try:
+        #     self.rels[type_name].remove( rel )
+        # except KeyError:
+        #     pass
 
-    def _findRel( self, referencedElement ) -> dict:
-        type_name = referencedElement.getTypeName()
-        try:
-            for rel in self.rels[type_name]:
+    def _findRel( self, referencedElement: Self ) -> object:
+        lst_rels: list[Relationship]
+        for _, lst_rels in self.rels.items():
+            for rel in lst_rels:
                 if rel.reference == referencedElement:
                     return rel
-        except KeyError:
-            pass
+        # type_name = referencedElement.getTypeName()
+        # try:
+        #     for rel in self.rels[type_name]:
+        #         if rel.reference == referencedElement:
+        #             return rel
+        # except KeyError:
+        #     pass
         return None
 
     def _getRelationshipPath( self, rel ):
@@ -630,10 +639,14 @@ class ModelElement( BaseElement ):
     
 
 class Relationship( object ):
-    def __init__( self, reference: ModelElement, load: bool=False ):
+    def __init__( self, reference: ModelElement, reltype: str, load: bool=False ):
         self.reference = reference
+        self.relation_type = reltype
         self.status = '' if load == False else 'new'
     
     def __repr__( self ):
-        return str( { "ref": self.reference, "status": self.status } )
+        return str( { "ref": self.reference, "type": self.relation_type, "status": self.status } )
 
+    def getType( self ):
+        return self.relation_type
+    

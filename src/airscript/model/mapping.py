@@ -27,9 +27,22 @@ from pyAirlock.common import lookup
 TYPENAME = 'mapping'
 KIND = 'Mapping'
 
-lookup.registerBoth( element.LOOKUP_TYPENAME, element.LOOKUP_KIND, TYPENAME, KIND )
+lookup.registerBoth( element.LOOKUP_TYPENAME2KIND, element.LOOKUP_KIND2TYPENAME, TYPENAME, KIND )
+
 
 class Mapping( element.ModelElement ):
+    RELATIONKEY = { "virtual-host": "virtual-hosts",
+                    "back-end-group": "back-end-groups",
+                    "remote-json-web-key-set": "remote-json-web-key-sets",
+                    "local-json-web-key-set": "local-json-web-key-sets",
+                    "ip-address-list": None,
+                    "icap-request-client-view": "icap-request-client-views",
+                    "icap-request-backend-view": "icap-request-backend-views",
+                    "icap-response-client-view": "icap-response-client-views",
+                    "icap-response-backend-view": "icap-response-backend-views",
+                    "mapping-template": "template"
+                }
+
     def __init__( self, parent, obj=None, id=None ):
         self._typename = TYPENAME
         self._path = 'mappings'
@@ -65,7 +78,7 @@ class Mapping( element.ModelElement ):
     
     def hasTemplate( self ):
         try:
-            return len( self.rels['mapping'] ) > 0
+            return len( self.rels['template'] ) > 0
         except KeyError:
             return False
     
@@ -91,7 +104,7 @@ class Mapping( element.ModelElement ):
             return False
         # build template chain
         chain = []
-        mapping = self.rels['mapping'][0]['r']
+        mapping = self.rels['template'][0]['r']
         error = False
         while mapping:
             if force == False and mapping._attrs_modified:
@@ -99,7 +112,7 @@ class Mapping( element.ModelElement ):
                 error = True
             chain.insert( 0, mapping )
             if recursive and mapping.hasTemplate():
-                mapping = mapping.rels['mapping'][0]['r']
+                mapping = mapping.rels['template'][0]['r']
                 if mapping in chain:
                     output.error( "Mapping {mapping.id}: cyclic source mapping dependencies - pulling not possible" )
                     error = True

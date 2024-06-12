@@ -138,8 +138,9 @@ class KeepAliveSession( object ):
     
     def keepalive( self ):
         try:
-            self.conn.keepalive()
-            self.last = int( time.time() )
+            if self.conn:
+                self.conn.keepalive()
+                self.last = int( time.time() )
         except exception.AirlockError:
             self.errors += 1
         self.count += 1

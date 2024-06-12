@@ -26,7 +26,7 @@ from pyAirlock.common import lookup
 TYPENAME = 'network-services'
 KIND = 'NetworkServicesSettings'
 
-lookup.registerBoth( element.LOOKUP_TYPENAME, element.LOOKUP_KIND, TYPENAME, KIND )
+lookup.registerBoth( element.LOOKUP_TYPENAME2KIND, element.LOOKUP_KIND2TYPENAME, TYPENAME, KIND )
 
 class NetworkServicesSettings( element.BaseElement ):
     def __init__( self, parent, obj=None, id=None ):

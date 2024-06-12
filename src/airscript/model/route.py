@@ -32,10 +32,10 @@ KIND_SRC_V4 = 'RouteSourceIPv4'
 TYPENAME_SRC_V6 = 'route-ipv6-source'
 KIND_SRC_V6 = 'RouteSourceIPv6'
 
-lookup.registerBoth( element.LOOKUP_TYPENAME, element.LOOKUP_KIND, TYPENAME_DST_V4, KIND_DST_V4 )
-lookup.registerBoth( element.LOOKUP_TYPENAME, element.LOOKUP_KIND, TYPENAME_DST_V6, KIND_DST_V6 )
-lookup.registerBoth( element.LOOKUP_TYPENAME, element.LOOKUP_KIND, TYPENAME_SRC_V4, KIND_SRC_V4 )
-lookup.registerBoth( element.LOOKUP_TYPENAME, element.LOOKUP_KIND, TYPENAME_SRC_V6, KIND_SRC_V6 )
+lookup.registerBoth( element.LOOKUP_TYPENAME2KIND, element.LOOKUP_KIND2TYPENAME, TYPENAME_DST_V4, KIND_DST_V4 )
+lookup.registerBoth( element.LOOKUP_TYPENAME2KIND, element.LOOKUP_KIND2TYPENAME, TYPENAME_DST_V6, KIND_DST_V6 )
+lookup.registerBoth( element.LOOKUP_TYPENAME2KIND, element.LOOKUP_KIND2TYPENAME, TYPENAME_SRC_V4, KIND_SRC_V4 )
+lookup.registerBoth( element.LOOKUP_TYPENAME2KIND, element.LOOKUP_KIND2TYPENAME, TYPENAME_SRC_V6, KIND_SRC_V6 )
 
 class Route( element.ModelElement ):
     def __init__( self, parent, obj=None, id=None, ipv4=True, source=True ):

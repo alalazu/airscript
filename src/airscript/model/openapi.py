@@ -27,9 +27,11 @@ from pyAirlock.common import lookup
 TYPENAME = 'openapi-document'
 KIND = 'OpenAPIDocument'
 
-lookup.registerBoth( element.LOOKUP_TYPENAME, element.LOOKUP_KIND, TYPENAME, KIND )
+lookup.registerBoth( element.LOOKUP_TYPENAME2KIND, element.LOOKUP_KIND2TYPENAME, TYPENAME, KIND )
 
 class OpenAPI( element.ModelElement ):
+    RELATIONKEY = { "mapping": "mappings" }
+    
     def __init__( self, parent, obj=None, id=None ):
         self._typename = TYPENAME
         self._path = 'api-security/openapi-documents'

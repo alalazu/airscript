@@ -24,9 +24,11 @@ from pyAirlock.common import lookup
 TYPENAME = 'anomaly-shield-traffic-matcher'
 KIND = 'AnomalyShieldTrafficMatcher'
 
-lookup.registerBoth( element.LOOKUP_TYPENAME, element.LOOKUP_KIND, TYPENAME, KIND )
+lookup.registerBoth( element.LOOKUP_TYPENAME2KIND, element.LOOKUP_KIND2TYPENAME, TYPENAME, KIND )
 
 class AnomalyShieldTrafficMatcher( element.ModelElement ):
+    RELATIONKEY = { "ip-address-list": "ip-address-lists" }
+    
     def __init__( self, parent, obj=None, id=None ):
         self._typename = TYPENAME
         self._path = 'anomaly-shield-traffic-matchers'

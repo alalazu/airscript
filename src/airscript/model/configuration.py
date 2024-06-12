@@ -218,9 +218,9 @@ class Configuration( object ):
         elif type_name == "anomaly-shield-rule":
             obj = self.objects['anomalyshield_rules']
         elif type_name == "anomaly-shield-traffic-matcher":
-            obj = self.objects['trafficmatchers']
+            obj = self.objects['anomalyshield_trafficmatchers']
         elif type_name == "anomaly-shield-trigger":
-            obj = self.objects['triggers']
+            obj = self.objects['anomalyshield_triggers']
         elif type_name == "back-end-group":
             obj = self.objects['backendgroups']
         elif type_name == "ssl-certificate":
@@ -334,17 +334,19 @@ class Configuration( object ):
         if not self._ordered_types:
             self._orderTypes()
         for k in sorted( self._ordered_types ):
-            element = self._ordered_types[k]
-            for cfg_item in self.objects[element].values():
+            element_type = self._ordered_types[k]
+            for cfg_item in self.objects[element_type].values():
                 if isinstance( cfg_item, list ):
                     for item in cfg_item:
                         item.sync()
+                        self._addElement2ObjectMap( item )
                 else:
                     cfg_item.sync()
             # remove deleted objects
-            objs = [k for k,v in self.objects[element].items() if v.isDeleted()]
+            print( f"Removing deleted objects: {element_type}" )
+            objs = [k for k,v in self.objects[element_type].items() if not isinstance( v, element.BaseElement ) or v.isDeleted()]
             for key in objs:
-                del self.objects[element][key]
+                del self.objects[element_type][key]
         # for settings in self._settings.values():
         #     settings.sync()
     
@@ -444,8 +446,9 @@ class Configuration( object ):
         # create objects without connecting them
         for item_kind, item_lists_per_kind in declarative['objects'].items():
             print( f"{item_kind}:" )
-            type_name = lookup.get( element.LOOKUP_KIND, item_kind )
-            # type_name = KIND2TYPENAME[item_kind]
+            if item_kind == "RouteSourceIPv4":
+                print( "" )
+            type_name = lookup.get( element.LOOKUP_KIND2TYPENAME, item_kind )
             for item in item_lists_per_kind:
                 if not 'relationships' in item:
                     item['relationships'] = {}
@@ -461,17 +464,18 @@ class Configuration( object ):
         # establish connections
         obj: element.ModelElement
         print( "Establish connections" )
-        for object_map in self.objects.values():
+        for key, object_map in self.objects.items():
+            print( f"{key}" )
             for obj in object_map.values():
                 if isinstance( obj, element.ModelElement ):
                     connections = obj.declarativeGetConnections()
                     if connections:
-                        for ref_kind, names in connections.items():
+                        for reltype, names in connections.items():
                             for name in names:
-                                ref = self._findByName( self.getObjects( lookup.get( element.LOOKUP_KIND, ref_kind )), name )
-                                # ref = self._findByName( self.getObjects( KIND2TYPENAME[ref_kind] ), name )
-                                print( f"{obj.getKind()}:{obj.name} - {ref.getKind()}:{ref.name}" )
-                                obj.addRel( ref, load=True, backlink=True )
+                                type_name = lookup.get( lookup.RELTYPE2NAME, reltype )
+                                ref = self._findByName( self.getObjects( type_name), name )
+                                print( f"- {obj.name} -> {ref.getKind()}:{ref.name}" )
+                                obj.addRel( ref, reltype, load=True, backlink=True )
         self.sync()
         #self.save()
         return True
@@ -712,43 +716,37 @@ class Configuration( object ):
             obj = session_settings.SessionSettings( self, obj=data, id=id )
         return obj
 
+    def _loadObject( self, type_name: str, id: str=None, data: dict=None ) -> element.BaseElement|element.ModelElement:
+        objects = self.getObjects( type_name )
+        try:
+            obj = objects[id]
+        except KeyError:
+            obj = None
+        if obj and data:
+            obj.loadData( data=data )
+        return obj
+
     def addAnomalyShieldApplication( self, id: str=None, data: dict=None ) -> anomalyshield_application.AnomalyShieldApplication:
-        obj: anomalyshield_application.AnomalyShieldApplication
-        if id in self._apipolicy:
-            obj = self._apipolicy[id]
-            if data:
-                obj.loadData( data=data )
-        else:
+        obj = self._loadObject( anomalyshield_application.TYPENAME, id, data )
+        if not obj:
             obj = anomalyshield_application.AnomalyShieldApplication( self, obj=data, id=id )
         return obj
 
     def addAnomalyShieldRule( self, id: str=None, data: dict=None ) -> anomalyshield_rule.AnomalyShieldRule:
-        obj: anomalyshield_rule.AnomalyShieldRule
-        if id in self._apipolicy:
-            obj = self._apipolicy[id]
-            if data:
-                obj.loadData( data=data )
-        else:
+        obj = self._loadObject( anomalyshield_rule.TYPENAME, id, data )
+        if not obj:
             obj = anomalyshield_rule.AnomalyShieldRule( self, obj=data, id=id )
         return obj
 
     def addAnomalyShieldTrafficMatcher( self, id: str=None, data: dict=None ) -> anomalyshield_traffic_matcher.AnomalyShieldTrafficMatcher:
-        obj: anomalyshield_traffic_matcher.AnomalyShieldTrafficMatcher
-        if id in self._apipolicy:
-            obj = self._apipolicy[id]
-            if data:
-                obj.loadData( data=data )
-        else:
+        obj = self._loadObject( anomalyshield_traffic_matcher.TYPENAME, id, data )
+        if not obj:
             obj = anomalyshield_traffic_matcher.AnomalyShieldTrafficMatcher( self, obj=data, id=id )
         return obj
 
     def addAnomalyShieldTrigger( self, id: str=None, data: dict=None ) -> anomalyshield_trigger.AnomalyShieldTrigger:
-        obj: anomalyshield_trigger.AnomalyShieldTrigger
-        if id in self._apipolicy:
-            obj = self._apipolicy[id]
-            if data:
-                obj.loadData( data=data )
-        else:
+        obj = self._loadObject( anomalyshield_trigger.TYPENAME, id, data )
+        if not obj:
             obj = anomalyshield_trigger.AnomalyShieldTrigger( self, obj=data, id=id )
         return obj
 
@@ -1706,6 +1704,8 @@ class Configuration( object ):
             'apipolicy': {},
             'anomalyshield_applications': {},
             'anomalyshield_rules': {},
+            'anomalyshield_trafficmatchers': {},
+            'anomalyshield_triggers': {},
             'backendgroups': {},
             'certs': {},
             'graphql': {},
@@ -1719,13 +1719,13 @@ class Configuration( object ):
             'openapi': {},
             'network_endpoints': {},
             'routes': {},
-            'trafficmatchers': {},
-            'triggers': {},
             'vhosts': {},
         }
         self._apipolicy = self.objects['apipolicy']
         self._anomalyshield_applications = self.objects['anomalyshield_applications']
         self._anomalyshield_rules = self.objects['anomalyshield_rules']
+        self._trafficmatchers = self.objects['anomalyshield_trafficmatchers']
+        self._triggers = self.objects['anomalyshield_triggers']
         self._backendgroups = self.objects['backendgroups']
         self._certs = self.objects['certs']
         self._graphql = self.objects['graphql']
@@ -1739,8 +1739,6 @@ class Configuration( object ):
         self._openapi = self.objects['openapi']
         self._network_endpoints = self.objects['network_endpoints']
         self._routes = self.objects['routes']
-        self._trafficmatchers = self.objects['trafficmatchers']
-        self._triggers = self.objects['triggers']
         self._vhosts = self.objects['vhosts']
 
         self._settings = {
@@ -1789,25 +1787,6 @@ class Configuration( object ):
                 #     r.append( objects[k] )
         return None
     
-    def _declarativeCreateRelationshipEntry( self, obj: element.ModelElement, my_kind: str, declarative_objects: dict ):
-        # declarative_objects: { kind: [{ 'attributes': object, 'connections': {kind: [names]} }] }
-        for item_kind, item_lists_per_kind in declarative_objects.items():
-            for item in item_lists_per_kind:
-                for ref_kind, names in item['connections'].items():
-                    if ref_kind != my_kind:
-                        continue
-                    if RELATIONSHIP_ORDER[lookup.get( element.LOOKUP_TYPENAME, item_kind )] < RELATIONSHIP_ORDER[lookup.get( element.LOOKUP_TYPENAME, my_kind )]:
-                        # connection to config element which has already/just yet been created
-                        # 
-                        continue
-                    if obj.name in names:
-                        if not 'relationships' in item:
-                            item['relationships'] = {}
-                        try:
-                            item['relationships'][obj.getPath()]['data'].append( {'type': obj.getTypeName(), 'id': obj.id} )
-                        except KeyError:
-                            item['relationships'][obj.getPath()] = {'data':[{'type': obj.getTypeName(), 'id': obj.id}]}
-
     def _orderTypes( self ):
         self._ordered_types = {}
         idx = 0

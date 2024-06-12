@@ -27,6 +27,8 @@ from airscript.base import element
 from airscript.declarative import basedoc, connecteddoc, defaults, globaldoc
 from airscript.model import configuration
 from airscript.utils import output, runinfo, templating
+from pyAirlock.common import lookup
+
 
 class DConfig( object ):
     def __init__( self, run_info: runinfo.RunInfo, dname: str=None ):
@@ -102,6 +104,7 @@ class DConfig( object ):
                 outfile = fname
             else:
                 outfile = os.path.join( self._dirname, fname )
+            print( f"- {outfile}" )
             with open( outfile, "w" ) as fp:
                 yaml.dump_all( export_docs, stream=fp )
         return True
@@ -112,26 +115,25 @@ class DConfig( object ):
         if self._loaded != "raw" and not force:
             output.error( "Loaded config not in format 'raw' - reload or specify 'force=True'" )
             return False
-        if not None in self._docs:
-            return False
-        if env == None:
-            env = 'default'
-        doc: connecteddoc.ConnectedDoc
-        for key, doc in self._docs[None].items():
-            if doc.getKind() != 'Mapping':
-                continue
-            appElements = self._getAppElementList( doc, env )
-            if len( appElements ) < 2:
-                fname = self._fnameFromKind( doc.getKind() )
-                self._addDoc2Docs( doc, f"{fname}.yaml".lower() )
-            else:
-                for item in appElements:
-                    self._addDoc2Docs( item, f"{doc.getName()}.yaml".lower() )
-        for key, doc in self._docs[None].items():
-            if self._map[doc.key][0] == None:
-                fname = self._fnameFromKind( doc.getKind() )
-                self._addDoc2Docs( doc, f"{fname}.yaml".lower() )
-        del self._docs[None]
+        if None in self._docs:
+            if env == None:
+                env = 'default'
+            doc: connecteddoc.ConnectedDoc
+            for key, doc in self._docs[None].items():
+                if doc.getKind() != 'Mapping':
+                    continue
+                appElements = self._getAppElementList( doc, env )
+                if len( appElements ) < 2:
+                    fname = self._fnameFromKind( doc.getKind() )
+                    self._addDoc2Docs( doc, f"{fname}.yaml".lower() )
+                else:
+                    for item in appElements:
+                        self._addDoc2Docs( item, f"{doc.getName()}.yaml".lower() )
+            for key, doc in self._docs[None].items():
+                if self._map[doc.key][0] == None:
+                    fname = self._fnameFromKind( doc.getKind() )
+                    self._addDoc2Docs( doc, f"{fname}.yaml".lower() )
+            del self._docs[None]
         self.save( force=force )
     
     def build( self, env: str, force: bool=False ) -> dict:
@@ -190,14 +192,12 @@ class DConfig( object ):
             output.error( "Loaded config not in format 'raw' - reload or specify 'force=True'" )
             return False
         for key, object_map in cfg.objects.items():
-            print( key )
             for item in object_map.values():
                 if key in ['hostnames', 'nodes', 'network_endpoints', 'routes']:
                     self._mergeGlobalDoc( item, env )
                 else:
                     self._mergeConnectedDoc( item, env )
         for key, item in cfg.settings().items():
-            print( key, item )
             if not item or key == 'templates':
                 continue
             self._mergeBaseDoc( item, env )
@@ -278,10 +278,10 @@ class DConfig( object ):
     def _getAppElementList( self, doc: connecteddoc.ConnectedDoc, env: str ) -> list:
         r = []
         connections = doc.getConnections4Env( env )
-        for kind, names in connections.items():
+        for reltype, names in connections.items():
             if len( names ) > 1:
                 return []
-            connected_doc = self.findDoc( kind, names[0] )
+            connected_doc = self.findDoc( lookup.get( element.LOOKUP_TYPENAME2KIND, lookup.get( lookup.RELTYPE2NAME, reltype )), names[0] )
             if connected_doc:
                 if doc.getConnectionOrderNr() > connected_doc.getConnectionOrderNr():
                     r += self._getAppElementList( connected_doc, env )

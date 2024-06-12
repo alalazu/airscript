@@ -87,6 +87,8 @@ def del_others( cfg, verbose: bool=False ):
 		object_list = cfg.getObjects( elementName )
 		for _,element in object_list.items():
 			keep = False
+			# $$$
+			# needs to changed - rels keys are not typenames
 			for typename,lst_rels in element.rels.items():
 				if cfg.elementOrderNr( elementName ) > cfg.elementOrderNr( typename ):
 					continue

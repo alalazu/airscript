@@ -39,8 +39,6 @@ The following global variables are pre-defined if run within AirScript shell:
 - run.log_file
 """
 
-import sys
-
 import airscript
 
 from airscript.utils import scripts

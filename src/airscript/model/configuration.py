@@ -212,47 +212,45 @@ class Configuration( object ):
     
     def getObjects( self, type_name: str ) -> dict:
         if type_name == "api-policy-service":
-            obj = self.objects['apipolicy']
+            obj = self.objects[api_policy.TYPENAME]
         elif type_name == "anomaly-shield-application":
-            obj = self.objects['anomalyshield_applications']
+            obj = self.objects[anomalyshield_application.TYPENAME]
         elif type_name == "anomaly-shield-rule":
-            obj = self.objects['anomalyshield_rules']
+            obj = self.objects[anomalyshield_rule.TYPENAME]
         elif type_name == "anomaly-shield-traffic-matcher":
-            obj = self.objects['anomalyshield_trafficmatchers']
+            obj = self.objects[anomalyshield_traffic_matcher.TYPENAME]
         elif type_name == "anomaly-shield-trigger":
-            obj = self.objects['anomalyshield_triggers']
+            obj = self.objects[anomalyshield_trigger.TYPENAME]
         elif type_name == "back-end-group":
-            obj = self.objects['backendgroups']
+            obj = self.objects[backendgroup.TYPENAME]
         elif type_name == "ssl-certificate":
-            obj = self.objects['certs']
+            obj = self.objects[certificate.TYPENAME]
         elif type_name == "graphql-document":
-            obj = self.objects['graphql']
+            obj = self.objects[graphql_object.TYPENAME]
         elif type_name == "host":
-            obj = self.objects['hostnames']
+            obj = self.objects[host.TYPENAME]
         elif type_name == "icap-environment":
-            obj = self.objects['icap']
+            obj = self.objects[icap_object.TYPENAME]
         elif type_name == "ip-address-list":
-            obj = self.objects['iplists']
-        elif type_name == "local-json-web-key-set":
-            obj = self.objects['jwks']
-        elif type_name == "remote-json-web-key-set":
+            obj = self.objects[iplist.TYPENAME]
+        elif type_name in ["local-json-web-key-set", "remote-json-web-key-set", "jwks"]:
             obj = self.objects['jwks']
         elif type_name == "kerberos-environment":
-            obj = self.objects['kerberos']
+            obj = self.objects[kerberos_object.TYPENAME]
         elif type_name == "mapping":
-            obj = self.objects['mappings']
+            obj = self.objects[mapping.TYPENAME]
         elif type_name == "allowed-network-endpoint":
-            obj = self.objects['network_endpoints']
+            obj = self.objects[network_endpoint.TYPENAME]
         elif type_name == "node":
-            obj = self.objects['nodes']
+            obj = self.objects[node.TYPENAME]
         elif type_name == "openapi-document":
-            obj = self.objects['openapi']
+            obj = self.objects[openapi_object.TYPENAME]
         elif type_name == "mapping-template":
-            obj = self._settings['templates']
-        elif type_name in ["route-ipv4-destination", "route-ipv6-destination", "route-ipv4-source", "route-ipv6-source"]:
+             obj = self._settings['templates']
+        elif type_name in ["route-ipv4-destination", "route-ipv6-destination", "route-ipv4-source", "route-ipv6-source", "routes"]:
             obj = self.objects['routes']
         elif type_name == "virtual-host":
-            obj = self.objects['vhosts']
+            obj = self.objects[vhost.TYPENAME]
         return obj
 
     def getListFunc( self, type_name: str ):
@@ -446,13 +444,15 @@ class Configuration( object ):
         # create objects without connecting them
         for item_kind, item_lists_per_kind in declarative['objects'].items():
             print( f"{item_kind}:" )
-            if item_kind == "RouteSourceIPv4":
-                print( "" )
             type_name = lookup.get( element.LOOKUP_KIND2TYPENAME, item_kind )
             for item in item_lists_per_kind:
                 if not 'relationships' in item:
                     item['relationships'] = {}
                 obj = self.createElement( type_name, data={'attributes': item['attributes']} )
+                if type_name == 'mapping':
+                    pass
+                if obj.getName() == 'poc.ch':
+                    pass
                 obj.sync()
                 if isinstance( obj, element.ModelElement ):
                     try:
@@ -468,6 +468,8 @@ class Configuration( object ):
             print( f"{key}" )
             for obj in object_map.values():
                 if isinstance( obj, element.ModelElement ):
+                    if obj.getName() == 'poc.ch':
+                        pass
                     connections = obj.declarativeGetConnections()
                     if connections:
                         for reltype, names in connections.items():
@@ -751,173 +753,109 @@ class Configuration( object ):
         return obj
 
     def addAPIPolicy( self, id: str=None, data: dict=None ) -> api_policy.APIPolicy:
-        obj: api_policy.APIPolicy
-        if id in self._apipolicy:
-            obj = self._apipolicy[id]
-            if data:
-                obj.loadData( data=data )
-        else:
+        obj = self._loadObject( api_policy.TYPENAME, id, data )
+        if not obj:
             obj = api_policy.APIPolicy( self, obj=data, id=id )
         return obj
     
     def addBackendGroup( self, id: str=None, data: dict=None ) -> backendgroup.Backendgroup:
-        obj: backendgroup.Backendgroup
-        if id in self._backendgroups:
-            obj = self._backendgroups[id]
-            if data:
-                obj.loadData( data=data )
-        else:
+        obj = self._loadObject( backendgroup.TYPENAME, id, data )
+        if not obj:
             obj = backendgroup.Backendgroup( self, obj=data, id=id )
         return obj
     
     def addCertificate( self, id: str=None, data: dict=None ) -> certificate.Certificate:
-        obj: certificate.Certificate
-        if id in self._certs:
-            obj = self._certs[id]
-            if data:
-                obj.loadData( data=data )
-        else:
+        obj = self._loadObject( certificate.TYPENAME, id, data )
+        if not obj:
             obj = certificate.Certificate( self, obj=data, id=id )
         return obj
     
     def addGraphQL( self, id: str=None, data: dict=None ) -> graphql_object.GraphQL:
-        obj: graphql_object.GraphQL
-        if id in self._graphql:
-            obj = self._graphql[id]
-            if data:
-                obj.loadData( data=data )
-        else:
+        obj = self._loadObject( graphql_object.TYPENAME, id, data )
+        if not obj:
             obj = graphql_object.GraphQL( self, obj=data, id=id )
         return obj
     
     def addHostName( self, id: str=None, data: dict=None ) -> host.Host:
-        obj: host.Host
-        if id in self._hostnames:
-            obj = self._hostnames[id]
-            if data:
-                obj.loadData( data=data )
-        else:
+        obj = self._loadObject( host.TYPENAME, id, data )
+        if not obj:
             obj = host.Host( self, obj=data, id=id )
         return obj
     
     def addICAP( self, id: str=None, data: dict=None ) -> icap_object.ICAP:
-        obj: icap_object.ICAP
-        if id in self._icap:
-            obj = self._icap[id]
-            if data:
-                obj.loadData( data=data )
-        else:
+        obj = self._loadObject( icap_object.TYPENAME, id, data )
+        if not obj:
             obj = icap_object.ICAP( self, obj=data, id=id )
         return obj
     
     def addIPList( self, id: str=None, data: dict=None ) -> iplist.IPList:
-        obj: iplist.IPList
-        if id in self._iplists:
-            obj = self._iplists[id]
-            if data:
-                obj.loadData( data=data )
-        else:
+        obj = self._loadObject( iplist.TYPENAME, id, data )
+        if not obj:
             obj = iplist.IPList( self, obj=data, id=id )
         return obj
     
     def addJWKS( self, id: str=None, data: dict=None, remote: bool=True ) -> jwks_object.JWKS:
-        obj: jwks_object.JWKS
-        if id in self._jwks:
-            obj = self._jwks[id]
-            if data:
-                obj.loadData( data=data )
-        else:
+        obj = self._loadObject( 'jwks', id, data )
+        if not obj:
             obj = jwks_object.JWKS( self, obj=data, id=id, remote=remote )
         return obj
     
     def addKerberos( self, id: str=None, data: dict=None ) -> kerberos_object.Kerberos:
-        obj: kerberos_object.Kerberos
-        if id in self._kerberos:
-            obj = self._kerberos[id]
-            if data:
-                obj.loadData( data=data )
-        else:
+        obj = self._loadObject( kerberos_object.TYPENAME, id, data )
+        if not obj:
             obj = kerberos_object.Kerberos( self, obj=data, id=id )
         return obj
     
     def addMapping( self, id: str=None, data: dict=None ) -> mapping.Mapping:
-        obj: mapping.Mapping
-        if id in self._mappings:
-            obj = self._mappings[id]
-            if data:
-                obj.loadData( data=data )
-        else:
+        obj = self._loadObject( mapping.TYPENAME, id, data )
+        if not obj:
             obj = mapping.Mapping( self, obj=data, id=id )
         return obj
     
     def addNetworkEndpoint( self, id: str=None, data: dict=None ) -> network_endpoint.NetworkEndpoint:
-        obj: network_endpoint.NetworkEndpoint
-        if id in self._network_endpoints:
-            obj = self._network_endpoints[id]
-            if data:
-                obj.loadData( data=data )
-        else:
+        obj = self._loadObject( network_endpoint.TYPENAME, id, data )
+        if not obj:
             obj = network_endpoint.NetworkEndpoint( self, obj=data, id=id )
         return obj
     
     def addNode( self, id: str=None, data: dict=None ) -> node.Node:
-        obj: node.Node
-        obj = None
-        if id in self._nodes:
-            obj = self._nodes[id]
+        obj = self._loadObject( node.TYPENAME, id, data )
+        if not obj:
             if data:
-                obj.loadData( data=data )
-        elif data:
-            for found in self._nodes.values():
-                try:
-                    if found.name == data['attributes']['hostName'] or (not found.name and (self.conn.getHost() == data['attributes']['hostName'] or self.conn.getNodename() == data['attributes']['hostName'])):
-                        obj = found
-                        data['id'] = obj.id
-                        obj.loadData( data=data )
-                        break
-                except KeyError:
-                    pass
-        if obj == None:
-            obj = node.Node( self, obj=data, id=id )
+                for found in self._nodes.values():
+                    try:
+                        if found.name == data['attributes']['hostName'] or (not found.name and (self.conn.getHost() == data['attributes']['hostName'] or self.conn.getNodename() == data['attributes']['hostName'])):
+                            obj = found
+                            data['id'] = obj.id
+                            obj.loadData( data=data )
+                            break
+                    except KeyError:
+                        pass
+            if not obj:
+                obj = node.Node( self, obj=data, id=id )
         return obj
 
     def addOpenAPI( self, id: str=None, data: dict=None ) -> openapi_object.OpenAPI:
-        obj: openapi_object.OpenAPI
-        if id in self._openapi:
-            obj = self._openapi[id]
-            if data:
-                obj.loadData( data=data )
-        else:
+        obj = self._loadObject( openapi_object.TYPENAME, id, data )
+        if not obj:
             obj = openapi_object.OpenAPI( self, obj=data, id=id )
         return obj
     
     def addRoute( self, id: str=None, data: dict=None, ipv4: bool=True, source: bool=True ) -> route.Route:
-        obj: jwks_object.JWKS
-        if id in self._jwks:
-            obj = self._jwks[id]
-            if data:
-                obj.loadData( data=data )
-        else:
+        obj = self._loadObject( 'routes', id, data )
+        if not obj:
             obj = route.Route( self, obj=data, id=id, ipv4=ipv4, source=source )
         return obj
     
     def addTemplate( self, id: str=None, data: dict=None ) -> template.Template:
-        obj: template.Template
-        if id in self._templates:
-            obj = self._templates[id]
-            if data:
-                obj.loadData( data=data )
-        else:
+        obj = self._loadObject( template.TYPENAME, id, data )
+        if not obj:
             obj = template.Template( self, obj=data, id=id )
         return obj
     
     def addVHost( self, id: str=None, data: dict=None ) -> vhost.VirtualHost:
-        obj: vhost.VirtualHost
-        if id in self._vhosts:
-            obj = self._vhosts[id]
-            if data:
-                obj.loadData( data=data )
-        else:
+        obj = self._loadObject( vhost.TYPENAME, id, data )
+        if not obj:
             obj = vhost.VirtualHost( self, obj=data, id=id )
         return obj
     
@@ -1338,6 +1276,8 @@ class Configuration( object ):
         self.getSettingsRoute()
         self._log.verbose( "- Settings: session" )
         self.getSettingsSession()
+        self._log.verbose( "- Mapping templates" )
+        self.getTemplates()
     
     def mappingFromTemplate( self, template ) -> bool:
         """ Create new mapping from template. """
@@ -1701,45 +1641,45 @@ class Configuration( object ):
         
     def _reset( self ):
         self.objects = {
-            'apipolicy': {},
-            'anomalyshield_applications': {},
-            'anomalyshield_rules': {},
-            'anomalyshield_trafficmatchers': {},
-            'anomalyshield_triggers': {},
-            'backendgroups': {},
-            'certs': {},
-            'graphql': {},
-            'hostnames': {},
-            'icap': {},
-            'iplists': {},
+            api_policy.TYPENAME: {},
+            anomalyshield_application.TYPENAME: {},
+            anomalyshield_rule.TYPENAME: {},
+            anomalyshield_traffic_matcher.TYPENAME: {},
+            anomalyshield_trigger.TYPENAME: {},
+            backendgroup.TYPENAME: {},
+            certificate.TYPENAME: {},
+            graphql_object.TYPENAME: {},
+            host.TYPENAME: {},
+            icap_object.TYPENAME: {},
+            iplist.TYPENAME: {},
             'jwks': {},
-            'kerberos': {},
-            'mappings': {},
-            'nodes': {},
-            'openapi': {},
-            'network_endpoints': {},
+            kerberos_object.TYPENAME: {},
+            mapping.TYPENAME: {},
+            node.TYPENAME: {},
+            openapi_object.TYPENAME: {},
+            network_endpoint.TYPENAME: {},
             'routes': {},
-            'vhosts': {},
+            vhost.TYPENAME: {},
         }
-        self._apipolicy = self.objects['apipolicy']
-        self._anomalyshield_applications = self.objects['anomalyshield_applications']
-        self._anomalyshield_rules = self.objects['anomalyshield_rules']
-        self._trafficmatchers = self.objects['anomalyshield_trafficmatchers']
-        self._triggers = self.objects['anomalyshield_triggers']
-        self._backendgroups = self.objects['backendgroups']
-        self._certs = self.objects['certs']
-        self._graphql = self.objects['graphql']
-        self._hostnames = self.objects['hostnames']
-        self._icap = self.objects['icap']
-        self._iplists = self.objects['iplists']
+        self._apipolicy = self.objects[api_policy.TYPENAME]
+        self._anomalyshield_applications = self.objects[anomalyshield_application.TYPENAME]
+        self._anomalyshield_rules = self.objects[anomalyshield_rule.TYPENAME]
+        self._trafficmatchers = self.objects[anomalyshield_traffic_matcher.TYPENAME]
+        self._triggers = self.objects[anomalyshield_trigger.TYPENAME]
+        self._backendgroups = self.objects[backendgroup.TYPENAME]
+        self._certs = self.objects[certificate.TYPENAME]
+        self._graphql = self.objects[graphql_object.TYPENAME]
+        self._hostnames = self.objects[host.TYPENAME]
+        self._icap = self.objects[icap_object.TYPENAME]
+        self._iplists = self.objects[iplist.TYPENAME]
         self._jwks = self.objects['jwks']
-        self._kerberos = self.objects['kerberos']
-        self._mappings = self.objects['mappings']
-        self._nodes = self.objects['nodes']
-        self._openapi = self.objects['openapi']
-        self._network_endpoints = self.objects['network_endpoints']
+        self._kerberos = self.objects[kerberos_object.TYPENAME]
+        self._mappings = self.objects[mapping.TYPENAME]
+        self._nodes = self.objects[node.TYPENAME]
+        self._openapi = self.objects[openapi_object.TYPENAME]
+        self._network_endpoints = self.objects[network_endpoint.TYPENAME]
         self._routes = self.objects['routes']
-        self._vhosts = self.objects['vhosts']
+        self._vhosts = self.objects[vhost.TYPENAME]
 
         self._settings = {
             'anomalyshield': None,

@@ -31,9 +31,8 @@ from pyAirlock.common import lookup
 
 
 class DConfig( object ):
-    def __init__( self, run_info: runinfo.RunInfo, dname: str=None ):
+    def __init__( self, run_info: runinfo.RunInfo=None, dname: str=None ):
         self._run = run_info
-        self._export_file = self._run.config.get( 'declarative.export-file', 'all.yaml' )
         if dname:
             self._dirname = dname
         else:
@@ -99,7 +98,7 @@ class DConfig( object ):
             for _, doc in docs.items():
                 export_docs.append( doc.export() )
             if fname == None:
-                fname = self._export_file
+                fname = self._run.config.get( 'declarative.export-file', 'all.yaml' )
             if fname[0] == '/':
                 outfile = fname
             else:

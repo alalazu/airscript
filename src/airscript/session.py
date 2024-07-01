@@ -53,6 +53,24 @@ class GatewaySession( object ):
         """ Return Airlock Gateway object """
         return self._gw
     
+    def getNodename( self ) -> str:
+        """ Return host name (FQDN or IP address) """
+        return self._nodename
+    
+    def getVersion( self ) -> str:
+        """ Return connected Gateway's version """
+        return self._version
+    
+    def setNodename( self, name ) -> bool:
+        """ Set a node's name """
+        if not self.session:
+            return False
+        oldname = self.session.node.setNodename( name )
+        if oldname == self._nodename:
+            self._nodename = name
+            return True
+        return False
+        
     def connect( self, label: str=None ) -> bool:
         """
         Establish session with Airlock Gateway.
@@ -164,9 +182,9 @@ class GatewaySession( object ):
         'fname' is the filename of a valid Airlock Gateway configuration, in zipped format,
         which you previously downloaded using, e.g.:
         
-        gws['my-waf'].configurationFindActive().export()
+        gws['my-waf'].configurationFindActive().download()
         
-        NEVER try to manually create an Airlock Gateway configuration!
+        NEVER try to manually create an Airlock Gateway configuration XML file!
         """
         files = { 'file': open( fname, 'rb' ) }
         resp = self.session.upload( "/configuration/configurations/import", content='application/zip', files=files )

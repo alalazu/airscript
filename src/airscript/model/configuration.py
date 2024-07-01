@@ -80,7 +80,7 @@ from airscript.system_settings import session as session_settings
 
 from airscript.utils import internal
 from pyAirlock.common import lookup
-from pyAirlock.common import log, utils
+from pyAirlock.common import exception, log, utils
 
 
 # TYPENAME2KIND = {
@@ -376,7 +376,7 @@ class Configuration( object ):
                 self._log.warning( "No comment specified! If you don't want to specify one, please use '<obj>.activate( comment=\"\" )'" )
                 return False
             elif comment != "":
-                params = {'comment': comment }
+                params = {'comment': comment}
         else:
             params = {'comment': self.comment}
         resp = self.conn.post( "/configuration/configurations/activate", data=params, timeout=60 )
@@ -421,7 +421,7 @@ class Configuration( object ):
             return False
         return True
     
-    def export( self, fname: str=None ) -> str:
+    def download( self, fname: str=None ) -> str|bool:
         """ Download configuration from Airlock Gateway as a zip file. """
         if not self.conn:
             return False
@@ -432,6 +432,26 @@ class Configuration( object ):
         self.conn.configuration.export( self.id, zip_file )
         self._log.verbose( f"Configuration saved to '{zip_file}'" )
         return zip_file
+    
+    def upload( self, fname ) -> bool:
+        """
+        Import Airlock Gateway configuration.
+        
+        'fname' is the filename of a valid Airlock Gateway configuration, in zipped format,
+        which you previously downloaded using, e.g.:
+        
+        session.configurationFindActive().download()
+        
+        NEVER try to manually create an Airlock Gateway configuration XML file!
+        """
+        try:
+            if self.conn.configuration.upload( self, fname, verify=True ):
+                return True
+        except exception.AirlockFileNotFoundError:
+            self._log.error( f"Upload: file '{fname}' not found" )
+            return False
+        self._log.error( "Upload: failed" )
+        return False
     
     def declarativeImport( self, declarative: dict ) -> bool:
         # format of declarative:

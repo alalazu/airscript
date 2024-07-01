@@ -94,6 +94,10 @@ class Mapping( element.ModelElement ):
     """
     interactions with Gateway REST API
     """
+    def maintenance_page( self, enable: bool=False ) -> bool:
+        """ Enable/disable maintenance page for mapping """
+        return self._parent.conn.mapping.maintenance_page( self.id, enable=enable )
+    
     def pull( self, recursive: bool=True, force: bool=False ) -> bool:
         """
         Pull settings from template

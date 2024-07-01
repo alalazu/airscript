@@ -9,7 +9,8 @@ configuration REST API, providing access to configuration objects,
 virtual hosts, mappings etc.
 
 AirScript can be used interactively using its console which allows
-you to easily interact with the REST API. It can also be used for
+you to easily and quickly inspect and adjust an Airlock Gateway
+configuration using the REST API. It can also be used for
 more complex operations for which a script has previously been created,
 e.g. migrating an applications configuration from a test to a production
 environment.
@@ -32,9 +33,9 @@ The documentation has not yet been created and is forthcoming.
 
 ### Setup
 First, you need to create a config file with connection parameters for your Airlock Gateways.
-You can use src/samples/config.yaml as a template. 
+You can use samples/config.yaml as a template. 
 
-The API keys can retrieved via Airlock Config Center - System Setup - System Admin.
+The API keys can be retrieved via Airlock Config Center - System Setup - System Admin.
 
 The default location for the config file is "~/.airscript/config.yaml".
 Otherwise, you can specify its location on the command line:
@@ -64,7 +65,29 @@ options:
   -V, --version         get version information
 ```
 
-### Example session
+## Example sessions
+
+### Mapping: activate maintenance mode
+```python
+Welcome to AirScript - the Airlock Gateay Configuration Script - Version 6
+Loading gateway definitions
+Connecting to 'test'
+Fetching active config
+Preloaded:
+- gw: gateway 'test'
+- c: current active config
+AirScript is ready
+>>> m=c.mappings(name='apollo')
+>>> m
+{74: {'id': 74, 'name': 'apollo', 'path': '/apollo/', 'labels': ['Sharepoint_2016', 'Sharepoint', 'Kerberos', 'Prod', 'Derived']}}
+>>> print(m[74].attrs['enableMaintenancePage'])
+False
+>>> m[74].attrs['enableMaintenancePage']=True
+>>> c.sync()
+>>> c.activate( comment="Apollo: maintenance page activated" )
+```
+
+### Virtual host: change IP
 ```python
 Welcome to AirScript - the Airlock Gateay Configuration Script - Version 6
 Loading gateway definitions
@@ -118,8 +141,10 @@ AirScript is ready
          'protocolMode': 'DEFAULT'}}
 >>> vh['7'].set( 'networkInterface.ipV4Address', '10.1.8.12/24' )
 >>> c.sync()
->>> c.activate( comment="Changed test.example.com IP address" )
+>>> c.save( comment="Changed test.example.com IP address" )
 ```
+
+This creates a new but yet inactive configuration. It can be manually activated in the Airlock Config Center.
 
 ## Getting support
 

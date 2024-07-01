@@ -449,10 +449,6 @@ class Configuration( object ):
                 if not 'relationships' in item:
                     item['relationships'] = {}
                 obj = self.createElement( type_name, data={'attributes': item['attributes']} )
-                if type_name == 'mapping':
-                    pass
-                if obj.getName() == 'poc.ch':
-                    pass
                 obj.sync()
                 if isinstance( obj, element.ModelElement ):
                     try:
@@ -468,8 +464,6 @@ class Configuration( object ):
             print( f"{key}" )
             for obj in object_map.values():
                 if isinstance( obj, element.ModelElement ):
-                    if obj.getName() == 'poc.ch':
-                        pass
                     connections = obj.declarativeGetConnections()
                     if connections:
                         for reltype, names in connections.items():

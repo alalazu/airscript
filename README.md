@@ -1,6 +1,6 @@
 | GitHub | PyPI |
 | ------ | ---- |
-| [![GitHub](https://img.shields.io/badge/GitHub-airscript-blue?logo=github)](https://github.com/alalazu/airscript) | [![PyPI](https://img.shields.io/pypi/v/airscript?logo=pypi)](https://pypi.org/project/airscript/) |
+| [![GitHub](https://img.shields.io/badge/GitHub-airscript-blue?logo=github)](https://github.com/alalazu/airscript) | [![PyPI](https://img.shields.io/pypi/v/pyAirscript?logo=pypi)](https://pypi.org/project/pyAirscript/) |
 
 # AirScript
 
@@ -24,7 +24,7 @@ thus blocks any attempt at data theft and manipulation.
 
 ### Installation
 ```bash
-pip install airlock-airscript
+pip install pyAirscript
 ```
 
 ### Documentation

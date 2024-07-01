@@ -8,7 +8,7 @@
 /*.zip
 .vs/
 src/.vs
-src/airlock_airscript.egg-info
+src/pyAirscript.egg-info
 src/airscript.egg-info
 __pycache__/
 work/

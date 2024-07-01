@@ -3,8 +3,8 @@ requires = ["setuptools>=61.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "airlock-airscript"
-version = "0.3.0"
+name = "pyAirscript"
+version = "0.3.1"
 description = "Airlock Gateway Configuration Script Engine"
 readme = "README.md"
 authors = [{ name = "Urs Zurbuchen", email = "info@airlock.com" }]

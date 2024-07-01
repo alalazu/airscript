@@ -9,10 +9,10 @@ configuration REST API, providing access to configuration objects,
 virtual hosts, mappings etc.
 
 AirScript can be used interactively using its console which allows
-you to easily interact with the REST API. It can also be used for
-more complex operations for which a script has previously been created,
-e.g. migrating an applications configuration from a test to a production
-environment.
+you to easily quickly inspect and adjust an Airlock Gateway configuration
+using the REST API. It can also be used for more complex operations for
+which a script has previously been created, e.g. migrating an applications
+configuration from a test to a production environment.
 
 [Airlock Gateway](https://www.airlock.com/en/secure-access-hub/components/gateway) is a web application firewall (WAF) and protects mission-critical,
 web-based applications and APIs from attacks and undesired visitors.

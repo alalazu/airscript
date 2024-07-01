@@ -76,25 +76,29 @@ def status_report( run ):
             out.nocolor( f"{node}: unknown server" )
         gw = servers[node]
         out.grey( f"{chr( 27 )}[KConnecting to '{node}'", end=chr( 13 ))
-        if gw.connect():
+        session = gw.session()
+        if session:
+            version = session.getVersion()
             try:
-                cfg = gw.configurationFindActive()
+                cfg = session.configurationFindActive()
             except exception.AirlockCommunicationError:
                 cfg = None
         else:
+            version = "n/a"
             cfg = None
         infos[node] = {}
         add( infos[node], lengths, 'name', node )
         add( infos[node], lengths, 'group', gw.group )
         if cfg:
-            add( infos[node], lengths, 'nodename', gw.nodename )
-            add( infos[node], lengths, 'version', gw.version )
+            add( infos[node], lengths, 'nodename', gw.getHost() )
+            add( infos[node], lengths, 'version', version )
             add( infos[node], lengths, 'activation', cfg.createdAt )
-            gw.disconnect()
         else:
             add( infos[node], lengths, 'nodename', "n/a" )
             add( infos[node], lengths, 'version', "n/a" )
             add( infos[node], lengths, 'activation', "<unreachable>" )
+        if session:
+            session.disconnect()
 
     for node, info in infos.items():
         if node == 'title':

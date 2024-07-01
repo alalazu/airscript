@@ -62,42 +62,45 @@ def sync_active_active( run ):
     servers = airscript.gwLoad( None, run )
     if origin in servers:
         # use origin node
-        servers[origin].connect()
+        session = servers[origin].session()
     else:
         # must be group name
         out.cyan( f"Finding most recent configuration for group {origin}" )
         ts = None
         for name in [name for name in servers if servers[name].group == origin]:
-            servers[name].connect()
-            cfg = servers[name].configurationFindActive()
-            if ts == None or ts < cfg.timestamp:
-                ts = cfg.timestamp
-                origin = name
+            session = servers[name].session()
+            if session:
+                cfg = session.configurationFindActive()
+                if ts == None or ts < cfg.timestamp:
+                    ts = cfg.timestamp
+                    origin = name
+                session.disconnect()
 
     out.yellow( f"Origin server: {origin}" )
     destinations = [name for name in servers if name != origin.name and servers[name].group == origin.group]
     origin_node = servers[origin]
-    origin_config = origin_node.configurationFindActive()
+    origin_session = origin_node.session()
+    if not origin_session:
+        die( f"Unable to establish session with origin node '{origin}'" )
+    origin_config = origin_session.configurationFindActive()
+    origin_name = origin_session.getNodename()
 
     out.cyan( f"- Downloading configuration" )
-    zip_file = origin_config.export()
-    origin_name = origin_node.getSession().getNodename()
+    zip_file = origin_config.download()
 
     for name in destinations:
         out.cyan( f"- {name}: uploading" )
-        gw = servers[name]
-        gw.connect()
-        conn = gw.getSession()       # pyAirlock gateway instance
-        old_name = conn.setNodename( origin_name )
-        if not conn.config.upload( zip_file, verify=True ):
-            out.error( "  failed" )
-        conn.setNodename( old_name )
-        out.cyan( f"- {name}: activating" )
-        if not conn.config.activate( comment=f"{origin_config.comment} (sync from {origin})", options={'cluster': False} ):
-            out.error( "  failed" )
-
-    for name in destinations:
-        servers[name].disconnect()
+        session = servers[name].session()
+        if session:
+            cfg = session.configurationFindActive()
+            old_name = session.setNodename( origin_name )
+            if not cfg.upload( zip_file ):
+                out.error( "  failed" )
+            session.setNodename( old_name )
+            out.cyan( f"- {name}: activating" )
+            if not cfg.activate( comment=f"{origin_config.comment} (sync from {origin})", options={'cluster': False} ):
+                out.error( "  failed" )
+            session.disconnect()
 
     out.green( "Completed" )
 

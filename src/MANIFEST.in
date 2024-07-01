@@ -1,3 +1,2 @@
 include COPYING
 recursive-include airscript *.py
-recursive-include samples *

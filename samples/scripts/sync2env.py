@@ -150,8 +150,8 @@ def sync2env( run ):
 			# continue
 		count += 1
 		out.green( f"- {name}" )
-		server.connect()
-		target_cfg = server.configurationFindActive()
+		session = server.session()
+		target_cfg = session.configurationFindActive()
 		target_cfg.loadAll()
 		for elementName in src_cfg.elementOrderList():
 			if elementName in ["mapping-template", "node"]:
@@ -185,7 +185,7 @@ def sync2env( run ):
 		# if verbose:
 		# 	out.grey( "activating" )
 		# target_cfg.activate( comment=f"Env sync'ed for {target_env} from {mgmt_server.getName()}" )
-		server.disconnect()
+		session.disconnect()
 	if count > 0:
 		out.yellow( f"Sync2Env completed, {count} server(s) updated" )
 	else:

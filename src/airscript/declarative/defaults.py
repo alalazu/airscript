@@ -30,7 +30,7 @@ def init( dirname: str=None ):
     map_defaults = {}
     if dirname == None:
         # get defaults from samples directory
-        dirname = os.path.join( os.sep.join( __file__.split( os.sep )[:-3] ),'samples','defaults' )
+        dirname = os.path.join( os.sep.join( __file__.split( os.sep )[:-4] ),'samples','defaults' )
     if os.path.isdir( dirname ):
         for fname in glob.glob( "*.yaml", root_dir=dirname ):
             with open( os.path.join( dirname, fname ), "r" ) as fp:
